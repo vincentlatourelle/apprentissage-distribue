@@ -7,11 +7,26 @@ class Client():
         self.labels = None
     
     def __bootstrap(self,x):
+        """ Effectue un bootstap sur le dataset x
+
+        :param x: le dataset pour le bootstrap
+        :type x: pd.Dataframe
+        :return: Donnees selectionnees
+        :rtype: pd.Dataframe
+        """        
         idx = np.random.choice(len(x)-1, replace=True ,size =len(x))
         return x.iloc[idx]
     
     def get_best_threshold(self,features, splits, current_tree):
-        
+        """Determine le threshold qui permet de mieux separer les donnees, selon la separation actuelle
+
+        :param features: Liste des features a evaluer
+        :type features: list
+        :param splits: liste des thresholds associes aux features
+        :type splits: list
+        :param current_tree: arbre actuellement construit
+        :type current_tree: Node
+        """        
         # Separer les donnees en fonctions de l'arbre courant 
         
         # calcul de gini pour chaque feature
@@ -22,7 +37,12 @@ class Client():
         pass
     
     def get_leaf(self,current_tree):
-        
+        """Obtient la distribution des classes pour un dataset 
+           (possiblement juste la classe majoritaire si on decide d'utiliser un vote)
+
+        :param current_tree: arbre actuellement evalue
+        :type current_tree: Node
+        """        
         # Separer les donnees en fonctions de l'arbre courant 
         
         # retourner le nombre de valeurs perturbees pour chaque classe dans le dataset courant
@@ -30,15 +50,30 @@ class Client():
         pass
     
     def set_new_forest(self,random_forest):
+        """Modifie la randomForest du client
+
+        :param random_forest: nouvelle randomForest
+        :type random_forest: RandomForest
+        """        
         self.forest = random_forest
     
     def get_local_accuracy(self):
-        
+    
         # Entrainer un modele de randomForest (scikit-learn) et retourner l'accuracy
         
         pass
     
     def get_thresholds(self,features):
+        """ Pour chaque features, recupere le min et le max, puis definit le threshold qui
+            est un valeur entre le min et le max
+
+        :param features: Liste des features selectionnes
+        :type features: list
+        :param thresholds: thresholds selectionnes par les clients pour chaque feature
+        :type thresholds: np.array de dimension n_client x n_feature
+        :return: thresholds selectionnes pour chaque feature
+        :rtype: np.array de dimension n_feature
+        """ 
         
         values = []
         for f in features:
@@ -51,6 +86,14 @@ class Client():
     
     @staticmethod
     def gini_impurity(y):
+        """ Calcul l'impureté de Gini
+
+        :param y: Liste des différents labels
+        :type y: list
+        :return: L'impureté de Gini (entre 0 et 1)
+        :rtype: float
+        """ 
+        
         l, count = np.unique(y,return_counts=True)
         prob = count/len(y)
         return 1 - np.sum(np.power(prob,2))
