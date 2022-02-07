@@ -21,6 +21,8 @@ class Node:
             custom_dict = {
                 "value" : self.value,  
             }
+        elif self.feature is None:
+            return {}
         else:
             custom_dict = {
                 "feature" : self.feature,
@@ -31,10 +33,13 @@ class Node:
         return custom_dict
     
     def serialize(self):
-        return json.dumps(self.get_custom_dict(), indent = 4)
+        return self.get_custom_dict()
     
     @staticmethod
     def deserialize(tree_dict):
+        if len(tree_dict) == 0:
+            return
+        
         new_tree = Node()
         for f in tree_dict:
             if f == "lNode":

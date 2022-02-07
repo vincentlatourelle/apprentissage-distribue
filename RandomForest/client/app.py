@@ -16,13 +16,15 @@ app = Flask(__name__)
 
 c = Client()
  
-@app.route('/best-split')
-def get_best_split():
+@app.route('/best-threshold')
+def get_best_threshold():
     features = request.get_json()['features']
-    splits = request.get_json()['splits']
+    threshold = request.get_json()['thresholds']
     current_tree = Node.deserialize(request.get_json()['current_tree'])
     
-    c.get_best_split(features,splits,current_tree)
+    c.get_best_threshold(features,threshold,current_tree)
+    
+    print("Envoi la valeur qui sépare mieux ses donnees (et le nombre de donnees qu'il a)", file=sys.stderr)
     
     return jsonify('')
 
@@ -56,10 +58,17 @@ def set_dataset():
     dataset_labels = request.get_json()["labels"]
     dataset = pd.DataFrame.from_dict(dataset_dict)
     c.dataset = dataset
+    c.labels = dataset_labels
     
     print(dataset, file=sys.stderr)
     
     return "", 200
+
+@app.route('/thresholds')
+def get_thresholds():
+    features = request.get_json()['features']
+    values = c.get_thresholds(features)
+    return jsonify(values)
     
 if __name__ == "__main__":
     app.run(host="0.0.0.0", debug=True)

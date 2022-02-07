@@ -5,7 +5,8 @@ WORKDIR /code
 COPY requirements.txt requirements.txt
 RUN pip3 install -r requirements.txt
 
-ENV FLASK_APP="app.py"
+ENV FLASK_APP="./RandomForest/client/app.py"
+ENV FLASK_ENV="development"
 
-COPY . .
+# COPY . .
 ENV PATH="/code/RandomForest:${PATH}"

@@ -7,7 +7,9 @@ services:
       dockerfile: ./RandomForest/client/Dockerfile
     ports:
       - "5001:5000"
-    command: python ./RandomForest/client/app.py
+    command: flask run --port 5000 --host 0.0.0.0
+    volumes:
+      - .:/code
 
   client2:
     build:
@@ -15,4 +17,6 @@ services:
       dockerfile: ./RandomForest/client/Dockerfile
     ports:
       - "5002:5000"
-    command: python ./RandomForest/client/app.py
+    command: flask run --port 5000 --host 0.0.0.0
+    volumes:
+      - .:/code
