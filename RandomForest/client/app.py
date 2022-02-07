@@ -1,9 +1,16 @@
 import json
+import os, sys
 
 import pandas as pd
 from flask import Flask, jsonify, request
-from RandomForest.client.client import Client
-from RandomForest.treeNode import Node
+from client import Client
+
+
+currentdir = os.path.dirname(os.path.realpath(__file__))
+rootdir = os.path.join(currentdir, "../../")
+sys.path.append(rootdir)
+
+from RandomForest.node import Node
 
 app = Flask(__name__)
 
@@ -45,11 +52,14 @@ def set_dataset():
     """Set le dataset du client (pour simplifier les tests)
     """
     
-    dataset_dict = request.get_json()
+    dataset_dict = request.get_json()["dataset"]
+    dataset_labels = request.get_json()["labels"]
     dataset = pd.DataFrame.from_dict(dataset_dict)
     c.dataset = dataset
+    
+    print(dataset, file=sys.stderr)
     
     return "", 200
     
 if __name__ == "__main__":
-    app.run()
+    app.run(host="0.0.0.0", debug=True)

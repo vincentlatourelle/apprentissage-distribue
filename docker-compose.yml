@@ -1,0 +1,18 @@
+version: '3'
+
+services:
+  client1:
+    build:
+      context: ./
+      dockerfile: ./RandomForest/client/Dockerfile
+    ports:
+      - "5001:5000"
+    command: python ./RandomForest/client/app.py
+
+  client2:
+    build:
+      context: ./
+      dockerfile: ./RandomForest/client/Dockerfile
+    ports:
+      - "5002:5000"
+    command: python ./RandomForest/client/app.py
