@@ -9,6 +9,13 @@ class Node:
         self.value = value
         
     def predict(self,x):
+        """ Prediction de l'arbre pour une donnee
+
+        :param x: la donnee a predire
+        :type x: np.array
+        :return: label
+        :rtype: str
+        """        
         if self.value != None:
             return self.value
         if x[self.feature] <= self.threshold:
@@ -17,6 +24,11 @@ class Node:
             return self.rNode.predict(x)
         
     def get_custom_dict(self):
+        """Retourne un dictionnaire (pour la serialisation)
+
+        :return: dictionnaire decrivant le Node
+        :rtype: dict
+        """        
         if self.value != None:
             custom_dict = {
                 "value" : self.value,  
@@ -33,10 +45,22 @@ class Node:
         return custom_dict
     
     def serialize(self):
+        """Retourne le dictionnaire serialise
+
+        :return: json
+        :rtype: dict
+        """        
         return self.get_custom_dict()
     
     @staticmethod
     def deserialize(tree_dict):
+        """ Deserialise un json pour creer un Node
+
+        :param tree_dict: description du Node
+        :type tree_dict: dict
+        :return: racine de l'arbre
+        :rtype: Node
+        """        
         if len(tree_dict) == 0:
             return
         
