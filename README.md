@@ -1,2 +1,2 @@
-# Apprentissage-distribué
+# Apprentissage distribué
 
