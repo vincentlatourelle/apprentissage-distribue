@@ -64,4 +64,8 @@ class ServerManager():
         data = {"current_tree":current_tree.serialize()}
         return self.__get(data,'leaf')
     
+    def get_clients_local_accuracy(self,test_dataset,test_labels):
+        data = {'dataset': test_dataset.to_dict(), 'labels': test_labels.to_dict()}
+        return self.__get(data,'local-accuracy')
+        
     

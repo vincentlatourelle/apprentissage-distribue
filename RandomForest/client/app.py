@@ -43,9 +43,13 @@ def set_new_forest(random_forest):
 
 @app.route('/local-accuracy')
 def get_local_accuracy():
-    c.get_local_accuracy()
+    dataset_dict = request.get_json()["dataset"]
+    dataset_labels = np.array(list(request.get_json()["labels"].values()))
+    dataset = pd.DataFrame.from_dict(dataset_dict)
     
-    return jsonify('')
+    accuracy = c.get_local_accuracy(dataset,dataset_labels)
+    
+    return jsonify(accuracy)
     
 
 @app.route('/dataset', methods=['POST'])

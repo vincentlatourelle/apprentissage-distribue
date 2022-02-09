@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.ensemble import ExtraTreesClassifier
 from serverManager import ServerManager
 
 import os
@@ -87,13 +88,13 @@ class Master():
 
     def get_label(self,current_tree):
         labels = np.concatenate(self.server_manager.get_leafs(current_tree).tolist(), axis=0)
-        print(labels)
+        # print(labels)
         result, count = np.unique(labels, return_counts=True) 
         if len(result) == 0:
             return "resultat_invalid"
         return result[np.argmax(count)]
     
-    def build_tree(self, current_node,current_root, depth=4):
+    def build_tree(self, current_node,current_root, depth=5):
         """Construit un arbre de facon distribuee
 
         :param current_tree: arbre actuellement en construction
@@ -107,16 +108,16 @@ class Master():
 
         thresholds = self.server_manager.get_thresholds(features.tolist(),current_root)
 
-        print(thresholds)
+        # print(thresholds)
 
         thresholds = self.get_thresholds(features, thresholds)
 
-        print(thresholds)
+        # print(thresholds)
 
         best_threshold = self.server_manager.get_best_threshold_from_clients(
             features, thresholds, current_root)
         
-        print(best_threshold)
+        # print(best_threshold)
         
         # Vote majoritaire pour avoir la meilleure separation
         votes = dict.fromkeys(features, 0)
@@ -131,14 +132,14 @@ class Master():
             current_node.value = self.get_label(current_root)
             return current_node.value
         
-        print(best_feature)
+        # print(best_feature)
         # Ajouter le meilleur feature et separation a "current_tree"
         current_node.feature = best_feature
         current_node.threshold = thresholds[np.where(features == best_feature)][0]
         
-        print(features)
-        print(thresholds)
-        print(current_node.threshold)
+        # print(features)
+        # print(thresholds)
+        # print(current_node.threshold)
         # Construit l'arbre de gauche
         lNode = Node()
         current_node.lNode = lNode
@@ -156,7 +157,7 @@ class Master():
         
         return current_root
 
-    def train(self, n = 100):
+    def train(self, n = 10):
         """ Entraine le modele en construisant un arbre de facon distribuee puis en
             l'ajoutant au Random Forest
         """
@@ -169,8 +170,22 @@ class Master():
         
         # Envoyer la foret aux clients
         print([x.get_custom_dict() for x in self.forest.forest])
-        self.get_accuracy()
+        self.get_federated_accuracy()
+        self.get_centralised_accuracy()
+        self.get_local_accuracy()
 
-    def get_accuracy(self):
+    def get_federated_accuracy(self):
         res = [self.forest.predict(row) for index, row in self.test_dataset.iterrows()]
         print(sum([int(value != self.test_labels.values[x]) for x, value in enumerate(res) ])/len(self.test_labels))
+        
+    def get_centralised_accuracy(self):
+        dt = ExtraTreesClassifier(n_estimators=10, max_depth=5)
+        dt.fit(self.dataset.values,self.labels.values)
+        res = dt.predict(self.test_dataset)
+        print(sum([int(value != self.test_labels.values[x]) for x, value in enumerate(res) ])/len(self.test_labels))
+        
+    def get_local_accuracy(self):
+        print(np.mean(self.server_manager.get_clients_local_accuracy(self.test_dataset,self.test_labels)))
+        
+        
+        

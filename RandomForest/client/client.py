@@ -1,6 +1,7 @@
 import sys
 import numpy as np
 import pandas as pd
+from sklearn.ensemble import ExtraTreesClassifier
 from urllib3 import Retry
 class Client():
     def __init__(self, dataset = None) -> None:
@@ -40,8 +41,6 @@ class Client():
         
         # Si rien est a separer
         if total_gini == 0 or len(dataset) <= 4:
-            if len(dataset) == 0:
-                print("waaaaaa", file=sys.stderr)
             return features[0], 0
         
         # calcul de gini pour chaque feature
@@ -83,11 +82,14 @@ class Client():
         """        
         self.forest = random_forest
     
-    def get_local_accuracy(self):
+    def get_local_accuracy(self,test_dataset,test_labels):
     
         # Entrainer un modele de randomForest (scikit-learn) et retourner l'accuracy
         
-        pass
+        dt = ExtraTreesClassifier(n_estimators=10, max_depth=5)
+        dt.fit(self.dataset.values,self.labels)
+        res = dt.predict(test_dataset)
+        return sum([int(value != test_labels[x]) for x, value in enumerate(res) ])/len(test_labels)
     
     def get_thresholds(self,features,current_tree):
         """ Pour chaque features, recupere le min et le max, puis definit le threshold qui
