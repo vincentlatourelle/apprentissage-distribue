@@ -1,5 +1,7 @@
+import sys
 import numpy as np
-
+import pandas as pd
+from urllib3 import Retry
 class Client():
     def __init__(self, dataset = None) -> None:
         self.dataset = dataset
@@ -28,13 +30,33 @@ class Client():
         :type current_tree: Node
         """        
         # Separer les donnees en fonctions de l'arbre courant 
+        labels = self.labels.copy()
+        dataset = self.dataset.copy()
+        if current_tree is not None:
+            dataset,labels = current_tree.get_current_node_data(dataset,labels)
+            
+        # Calcul du gini de l'ensemble actuel
+        total_gini = Client.gini_impurity(labels)
+        
+        # Si rien est a separer
+        if total_gini == 0 or len(dataset) <= 4:
+            if len(dataset) == 0:
+                print("waaaaaa", file=sys.stderr)
+            return features[0], 0
         
         # calcul de gini pour chaque feature
+        ds_star = dataset[features]
+        thresholds = pd.DataFrame([splits],columns=features)
+        ginis = ds_star.apply(lambda col: Client.gini_gain(col,labels,thresholds,total_gini), 0).values
         
         # retourne l'attribut permetant d'avoir le meilleur "gain de gini", ainsi que le nombre 
         # donnees dans le dataset courant
+            
+        i_best_gini = np.argmax(ginis)
+        best_gini_feature = features[i_best_gini]
+        n_data = len(labels)
         
-        pass
+        return best_gini_feature, n_data
     
     def get_leaf(self,current_tree):
         """Obtient la distribution des classes pour un dataset 
@@ -44,10 +66,14 @@ class Client():
         :type current_tree: Node
         """        
         # Separer les donnees en fonctions de l'arbre courant 
-        
+        labels = self.labels.copy()
+        dataset = self.dataset.copy()
+        if current_tree is not None:
+            dataset,labels = current_tree.get_current_node_data(dataset,labels)
+            
+        print(labels, file=sys.stderr)
         # retourner le nombre de valeurs perturbees pour chaque classe dans le dataset courant
-        
-        pass
+        return labels
     
     def set_new_forest(self,random_forest):
         """Modifie la randomForest du client
@@ -63,7 +89,7 @@ class Client():
         
         pass
     
-    def get_thresholds(self,features):
+    def get_thresholds(self,features,current_tree):
         """ Pour chaque features, recupere le min et le max, puis definit le threshold qui
             est un valeur entre le min et le max
 
@@ -74,7 +100,11 @@ class Client():
         :return: thresholds selectionnes pour chaque feature
         :rtype: np.array de dimension n_feature
         """ 
-        
+        labels = self.labels.copy()
+        dataset = self.dataset.copy()
+        if current_tree is not None:
+            dataset,labels = current_tree.get_current_node_data(dataset,labels)
+            
         values = []
         for f in features:
             col = self.dataset[f]
@@ -97,3 +127,15 @@ class Client():
         l, count = np.unique(y,return_counts=True)
         prob = count/len(y)
         return 1 - np.sum(np.power(prob,2))
+    
+    @staticmethod
+    def gini_gain(col, y,thresholds, total_gini):
+        threshold = thresholds[col.name][0]
+        i_l = np.where(col <= threshold)[0]
+        i_r = np.where(col > threshold)[0]
+        
+        l_gini = Client.gini_impurity(y[i_l])
+        r_gini = Client.gini_impurity(y[i_r])
+        sum_gini = total_gini - (len(i_l)/len(y))*l_gini - (len(i_r)/len(y))*r_gini
+            
+        return sum_gini

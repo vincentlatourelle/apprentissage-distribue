@@ -1,4 +1,3 @@
-from flask import jsonify
 import numpy as np
 from serverManager import ServerManager
 
@@ -9,6 +8,7 @@ currentdir = os.path.dirname(os.path.realpath(__file__))
 rootdir = os.path.join(currentdir, "../../")
 sys.path.append(rootdir)
 
+from RandomForest.randomForest import RandomForest
 from RandomForest.node import Node
 
 class Master():
@@ -18,6 +18,7 @@ class Master():
         self.test_dataset = None
         self.test_labels = None
         self.server_manager = server_manager
+        self.forest = RandomForest()
 
     def split_dataset(self):
         """ Separe les donnees et les transmets au client 
@@ -59,7 +60,7 @@ class Master():
         """
         
         features = self.dataset.columns
-        return np.random.choice(features, replace=False, size=np.random.randint(2, np.sqrt(len(features))+2))
+        return np.random.choice(features, replace=False, size=np.random.randint(2, np.sqrt(len(features))+4))
 
     def get_thresholds(self, features, thresholds):
         """ Pour chaque features, recupere le min et le max, puis definit le threshold qui
@@ -84,16 +85,27 @@ class Master():
 
         return values
 
-    def build_tree(self, current_tree):
+    def get_label(self,current_tree):
+        labels = np.concatenate(self.server_manager.get_leafs(current_tree).tolist(), axis=0)
+        print(labels)
+        result, count = np.unique(labels, return_counts=True) 
+        if len(result) == 0:
+            return "resultat_invalid"
+        return result[np.argmax(count)]
+    
+    def build_tree(self, current_node,current_root, depth=4):
         """Construit un arbre de facon distribuee
 
         :param current_tree: arbre actuellement en construction
         :type current_tree: Node
         """        
+        if depth == 0:
+            current_node.value = self.get_label(current_root)
+            return current_node.value
         
         features = self.select_features()
 
-        thresholds = self.server_manager.get_thresholds(features.tolist())
+        thresholds = self.server_manager.get_thresholds(features.tolist(),current_root)
 
         print(thresholds)
 
@@ -102,21 +114,63 @@ class Master():
         print(thresholds)
 
         best_threshold = self.server_manager.get_best_threshold_from_clients(
-            features, thresholds, current_tree)
-
+            features, thresholds, current_root)
+        
+        print(best_threshold)
+        
         # Vote majoritaire pour avoir la meilleure separation
-
+        votes = dict.fromkeys(features, 0)
+        
+        for c in best_threshold:
+            votes[c['feature']] += c["n_data"]
+            
+        best_feature = max(votes, key=votes.get)
+        
+        # Si personne ne vote
+        if votes[best_feature] == 0:
+            current_node.value = self.get_label(current_root)
+            return current_node.value
+        
+        print(best_feature)
         # Ajouter le meilleur feature et separation a "current_tree"
-
+        current_node.feature = best_feature
+        current_node.threshold = thresholds[np.where(features == best_feature)][0]
+        
+        print(features)
+        print(thresholds)
+        print(current_node.threshold)
         # Construit l'arbre de gauche
-
+        lNode = Node()
+        current_node.lNode = lNode
+        lres = self.build_tree(lNode,current_root, depth-1)
         # Construit l'arbre de droite
+        rNode = Node()
+        current_node.rNode = rNode
+        rres = self.build_tree(rNode,current_root, depth-1)
+        
+        # Fusionne si la separation etait invalide (surement un probleme qui fait qu'on a des ensembles vide relativement souvent)
+        if lres == "resultat_invalid":
+            current_node.lNode.value = current_node.rNode.left_most_leaf()
+        elif rres == "resultat_invalid":
+            current_node.rNode.value = current_node.lNode.right_most_leaf()
+        
+        return current_root
 
-    def train(self):
+    def train(self, n = 100):
         """ Entraine le modele en construisant un arbre de facon distribuee puis en
             l'ajoutant au Random Forest
-        """        
-        current_tree = Node()
-        current_tree = self.build_tree(current_tree)
+        """
+        for t in range(n):
+            current_tree = Node()
+            self.build_tree(current_tree,current_tree)
+            
+            # Ajouter current_tree a la foret
+            self.forest.add(current_tree)
+        
+        # Envoyer la foret aux clients
+        print([x.get_custom_dict() for x in self.forest.forest])
+        self.get_accuracy()
 
-        # Ajouter current_tree a la foret
+    def get_accuracy(self):
+        res = [self.forest.predict(row) for index, row in self.test_dataset.iterrows()]
+        print(sum([int(value != self.test_labels.values[x]) for x, value in enumerate(res) ])/len(self.test_labels))

@@ -1,5 +1,6 @@
 import json
 import os, sys
+import numpy as np
 
 import pandas as pd
 from flask import Flask, jsonify, request
@@ -22,18 +23,16 @@ def get_best_threshold():
     threshold = request.get_json()['thresholds']
     current_tree = Node.deserialize(request.get_json()['current_tree'])
     
-    c.get_best_threshold(features,threshold,current_tree)
+    feature, n_data = c.get_best_threshold(features,threshold,current_tree)
     
-    print("Envoi la valeur qui sépare mieux ses donnees (et le nombre de donnees qu'il a)", file=sys.stderr)
-    
-    return jsonify('')
+    return jsonify({"feature":feature, "n_data":n_data})
 
 @app.route('/leaf')
 def get_leaf():
-    current_tree = request.get_json()["current_tree"]
-    c.get_leaf(current_tree)
+    current_tree = Node.deserialize(request.get_json()['current_tree'])
+    labels = c.get_leaf(current_tree)
     
-    return jsonify('')
+    return jsonify(labels.tolist())
 
 @app.route('/random-forest', methods=['POST'])
 def set_new_forest(random_forest):
@@ -55,7 +54,7 @@ def set_dataset():
     """
     
     dataset_dict = request.get_json()["dataset"]
-    dataset_labels = request.get_json()["labels"]
+    dataset_labels = np.array(list(request.get_json()["labels"].values()))
     dataset = pd.DataFrame.from_dict(dataset_dict)
     c.dataset = dataset
     c.labels = dataset_labels
@@ -66,8 +65,9 @@ def set_dataset():
 
 @app.route('/thresholds')
 def get_thresholds():
+    current_tree = Node.deserialize(request.get_json()['current_tree'])
     features = request.get_json()['features']
-    values = c.get_thresholds(features)
+    values = c.get_thresholds(features,current_tree)
     return jsonify(values)
     
 if __name__ == "__main__":

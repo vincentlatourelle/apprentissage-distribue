@@ -40,9 +40,9 @@ class ServerManager():
         for client in range(len(self.clients)):
             requests.post(f'{self.clients[client]}/dataset', json={'dataset': dataset[client].to_dict(), 'labels': labels[client].to_dict()}, headers={"Content-Type":"application/json; charset=utf-8"})
             
-    def get_thresholds(self, features):
+    def get_thresholds(self, features, current_tree):
         
-        data = {"features" : features}
+        data = {"features" : features, "current_tree":current_tree.serialize()}
         return self.__get(data,'thresholds')
             
     def get_best_threshold_from_clients(self,features, thresholds, current_tree):
@@ -59,5 +59,9 @@ class ServerManager():
         """        
         data = {"features" : features.tolist(), "thresholds": thresholds.tolist(), "current_tree":current_tree.serialize()}
         return self.__get(data,'best-threshold')
+    
+    def get_leafs(self, current_tree):
+        data = {"current_tree":current_tree.serialize()}
+        return self.__get(data,'leaf')
     
     

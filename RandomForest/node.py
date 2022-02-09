@@ -1,4 +1,7 @@
 import json
+import sys
+
+import numpy as np
 
 class Node:
     def __init__(self, feature=None, threshold=None, lNode=None, rNode=None, value=None) -> None:
@@ -38,10 +41,15 @@ class Node:
         else:
             custom_dict = {
                 "feature" : self.feature,
-                "threshold" : self.threshold,
-                "rNode" : self.rNode.get_custom_dict(),
-                "lNode" : self.lNode.get_custom_dict()    
+                "threshold" : self.threshold, 
             }
+            
+        if self.lNode:
+            custom_dict['lNode'] = self.lNode.get_custom_dict()  
+        if self.rNode:
+            custom_dict["rNode"] = self.rNode.get_custom_dict()
+        
+            
         return custom_dict
     
     def serialize(self):
@@ -60,9 +68,9 @@ class Node:
         :type tree_dict: dict
         :return: racine de l'arbre
         :rtype: Node
-        """        
+        """    
         if len(tree_dict) == 0:
-            return
+            return Node()
         
         new_tree = Node()
         for f in tree_dict:
@@ -74,4 +82,47 @@ class Node:
                 new_tree.__dict__[f] = tree_dict[f]
                 
         return new_tree
+    
+    def get_current_node_data(self, dataset, labels):
+        
+        # Si c'est une feuille retourner null
+        if not self.value is None:
+            return None, None
+        
+        # Si c'est un noeud non initialise correctement, garder le dataset
+        if self.feature is None:
+            return dataset, labels
+        
+        
+        i_l = np.where(dataset[self.feature].values <= self.threshold)
+        i_r = np.where(dataset[self.feature].values > self.threshold)
+        ldf = dataset.iloc[i_l]
+        rdf = dataset.iloc[i_r]
+        
+        llables = labels[i_l]
+        rlables = labels[i_r]        
+        
+        # si le noeud gauche est present, l'explorer et retourner ce qu'il retourne si ce n'est pas nul
+        ldf, l_new_labels = self.lNode.get_current_node_data(ldf,llables)
+        if not ldf is None:
+            return ldf,l_new_labels
+        
+        rdf, r_new_labels = self.rNode.get_current_node_data(rdf,rlables)
+        if not rdf is None:
+            return rdf, r_new_labels
+        
+        return None, None
+        
+    def right_most_leaf(self):
+        current_node = self
+        while current_node.value is None:
+            current_node = current_node.rNode
             
+        return current_node.value
+    
+    def left_most_leaf(self):
+        current_node = self
+        while current_node.value is None:
+            current_node = current_node.rNode
+            
+        return current_node.value
