@@ -157,13 +157,13 @@ class Master():
         
         return current_root
 
-    def train(self, n = 10):
+    def train(self, n = 100):
         """ Entraine le modele en construisant un arbre de facon distribuee puis en
             l'ajoutant au Random Forest
         """
         for t in range(n):
             current_tree = Node()
-            self.build_tree(current_tree,current_tree)
+            self.build_tree(current_tree,current_tree, depth=15)
             
             # Ajouter current_tree a la foret
             self.forest.add(current_tree)
@@ -179,7 +179,7 @@ class Master():
         print(sum([int(value != self.test_labels.values[x]) for x, value in enumerate(res) ])/len(self.test_labels))
         
     def get_centralised_accuracy(self):
-        dt = ExtraTreesClassifier(n_estimators=10, max_depth=5)
+        dt = ExtraTreesClassifier()
         dt.fit(self.dataset.values,self.labels.values)
         res = dt.predict(self.test_dataset)
         print(sum([int(value != self.test_labels.values[x]) for x, value in enumerate(res) ])/len(self.test_labels))

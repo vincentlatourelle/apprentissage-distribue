@@ -86,7 +86,7 @@ class Client():
     
         # Entrainer un modele de randomForest (scikit-learn) et retourner l'accuracy
         
-        dt = ExtraTreesClassifier(n_estimators=10, max_depth=5)
+        dt = ExtraTreesClassifier()
         dt.fit(self.dataset.values,self.labels)
         res = dt.predict(test_dataset)
         return sum([int(value != test_labels[x]) for x, value in enumerate(res) ])/len(test_labels)

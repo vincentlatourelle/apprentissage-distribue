@@ -4,10 +4,13 @@ import json
 from multiprocessing import Pool
 import numpy as np
 
-
+def inner_get(url,data):
+        return requests.get(url,json=data, headers={"Content-Type":"application/json; charset=utf-8"}).json()
 class ServerManager():
     def __init__(self, clients) -> None:
         self.clients = clients
+        self.pool = Pool(len(self.clients))
+    
         
     def __get(self, data, uri):
         """Effectue un HTTP GET pour chaque client et retourne leurs reponses
@@ -19,13 +22,9 @@ class ServerManager():
         :return: Reponse des clients
         :rtype: list
         """        
-        values = []
-        for client in self.clients:
-            r = requests.get(f'{client}/{uri}',json=data, headers={"Content-Type":"application/json; charset=utf-8"})
-            
-            values.append(r.json())
-            
-        return np.array(values)
+        r = self.pool.starmap(inner_get, zip([f'{x}/{uri}' for x in self.clients], [data] * len(self.clients)))
+          
+        return np.array(r)
         
             
     def send_dataset_to_client(self,dataset, labels):

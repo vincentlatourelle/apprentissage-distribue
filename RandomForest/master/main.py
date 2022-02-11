@@ -8,7 +8,7 @@ def main():
     labels = df['diagnosis']
     df.drop(["id",'diagnosis', 'Unnamed: 32'],axis=1, inplace=True)
     
-    server_manager = ServerManager(["http://localhost:5001","http://localhost:5002"])
+    server_manager = ServerManager(["http://localhost:5001","http://localhost:5002","http://localhost:5003","http://localhost:5004"])
     master = Master(df, labels, server_manager)
     master.split_dataset()
     
