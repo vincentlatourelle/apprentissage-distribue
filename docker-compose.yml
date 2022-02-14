@@ -20,3 +20,23 @@ services:
     command: flask run --port 5000 --host 0.0.0.0
     volumes:
       - .:/code
+
+  client3:
+    build:
+      context: ./
+      dockerfile: ./RandomForest/client/Dockerfile
+    ports:
+      - "5003:5000"
+    command: flask run --port 5000 --host 0.0.0.0
+    volumes:
+      - .:/code
+
+  client4:
+    build:
+      context: ./
+      dockerfile: ./RandomForest/client/Dockerfile
+    ports:
+      - "5004:5000"
+    command: flask run --port 5000 --host 0.0.0.0
+    volumes:
+      - .:/code
