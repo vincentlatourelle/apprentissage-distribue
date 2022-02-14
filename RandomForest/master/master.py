@@ -57,13 +57,15 @@ class Master():
 
     def get_label(self, current_tree):
         labels = np.concatenate(self.server_manager.get_leafs(current_tree).tolist(), axis=0)
-        # print(labels)
-        result, count = np.unique(labels, return_counts=True)
+        print("<-- Le master recoit les labels des clients")
+        print(labels)
+        print("**************************************************************************************")
+        result, count = np.unique(labels, return_counts=True) 
         if len(result) == 0:
             return "resultat_invalid"
         return result[np.argmax(count)]
-
-    def build_tree(self, current_node, current_root, depth=5):
+    
+    def build_tree(self, current_node,current_root, depth=15):
         """Construit un arbre de facon distribuee
 
         :param current_tree: arbre actuellement en construction
@@ -74,20 +76,27 @@ class Master():
             return current_node.value
 
         features = self.select_features()
+        
+        print("--> Le master envoie les features aux clients")
+        
+        thresholds = self.server_manager.get_thresholds(features.tolist(),current_root)
 
-        thresholds = self.server_manager.get_thresholds(features.tolist(), current_root)
-
-        # print(thresholds)
+        print("<-- Le master recoit les thresholds des clients")
+        print(thresholds)
+        print("**************************************************************************************")
+        
 
         thresholds = self.get_thresholds(features, thresholds)
-
-        # print(thresholds)
-
+        
+        print("--> Le master envoie les thresholds selectionnes aux clients")
+        print( thresholds )
+        
         best_threshold = self.server_manager.get_best_threshold_from_clients(
             features, thresholds, current_root)
-
-        # print(best_threshold)
-
+        
+        print("<-- Le master recoit les meilleurs features et le nombre de donnees actuels des clients")
+        print( best_threshold )
+        print("**************************************************************************************")
         # Vote majoritaire pour avoir la meilleure separation
         votes = dict.fromkeys(features, 0)
 
@@ -100,15 +109,11 @@ class Master():
         if votes[best_feature] == 0:
             current_node.value = self.get_label(current_root)
             return current_node.value
-
-        # print(best_feature)
+        
         # Ajouter le meilleur feature et separation a "current_tree"
         current_node.feature = best_feature
         current_node.threshold = thresholds[np.where(features == best_feature)][0]
-
-        # print(features)
-        # print(thresholds)
-        # print(current_node.threshold)
+        
         # Construit l'arbre de gauche
         lNode = Node()
         current_node.lNode = lNode

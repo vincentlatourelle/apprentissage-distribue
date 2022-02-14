@@ -69,9 +69,8 @@ class Client():
         labels = self.labels.copy()
         dataset = self.dataset.copy()
         if current_tree is not None:
-            dataset, labels = current_tree.get_current_node_data(dataset, labels)
-
-        print(labels, file=sys.stderr)
+            dataset,labels = current_tree.get_current_node_data(dataset,labels)
+            
         # retourner le nombre de valeurs perturbees pour chaque classe dans le dataset courant
         return labels
 
