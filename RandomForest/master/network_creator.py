@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from sklearn.ensemble import ExtraTreesClassifier
 
 from master import Master
 from serverManager import ServerManager
@@ -45,7 +46,20 @@ class NetworkCreator:
         self.server_manager.send_dataset_to_client(
             train_datasets, train_labels)
 
+    def get_federated_accuracy(self,forest):
+        res = [forest.predict(row) for index, row in self.test_dataset.iterrows()]
+        return (1 - sum([int(value != self.test_labels.values[x]) for x, value in enumerate(res)]) / len(self.test_labels))
 
+    def get_centralised_accuracy(self):
+        dt = ExtraTreesClassifier()
+        dt.fit(self.dataset.values, self.labels.values)
+        res = dt.predict(self.test_dataset)
+        return (1 - sum([int(value != self.test_labels.values[x]) for x, value in enumerate(res)]) / len(self.test_labels))
+
+    def get_local_accuracy(self):
+        return (1 - np.mean(self.server_manager.get_clients_local_accuracy(self.test_dataset, self.test_labels)))
+        
+        
 def main():
     df = pd.read_csv("../BCWdata.csv")
 
@@ -60,6 +74,11 @@ def main():
     # A valider
     master = Master(server_manager)
     master.train(n=5)
+    
+    print(network_creator.get_local_accuracy())
+    print(network_creator.get_centralised_accuracy())
+    print(network_creator.get_federated_accuracy(master.forest))
+    
 
 
 if __name__ == '__main__':

@@ -144,15 +144,4 @@ class Master():
 
     def get_clients_features(self):
         self.features = self.server_manager.get_clients_features()[0]
-    # def get_federated_accuracy(self):
-    #     res = [self.forest.predict(row) for index, row in self.test_dataset.iterrows()]
-    #     print(sum([int(value != self.test_labels.values[x]) for x, value in enumerate(res)]) / len(self.test_labels))
 
-    # def get_centralised_accuracy(self):
-    #     dt = ExtraTreesClassifier()
-    #     dt.fit(self.dataset.values, self.labels.values)
-    #     res = dt.predict(self.test_dataset)
-    #     print(sum([int(value != self.test_labels.values[x]) for x, value in enumerate(res)]) / len(self.test_labels))
-
-    # def get_local_accuracy(self):
-    #     print(np.mean(self.server_manager.get_clients_local_accuracy(self.test_dataset, self.test_labels)))
