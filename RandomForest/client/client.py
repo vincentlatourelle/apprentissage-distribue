@@ -2,7 +2,6 @@ import sys
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import ExtraTreesClassifier
-from urllib3 import Retry
 class Client():
     def __init__(self, dataset = None) -> None:
         self.dataset = dataset
