@@ -103,11 +103,11 @@ class Node:
         rlabels = labels[i_r]        
         
         # si le noeud gauche est present, l'explorer et retourner ce qu'il retourne si ce n'est pas nul
-        ldf, l_new_labels = self.lNode.get_current_node_data(ldf,llables)
+        ldf, l_new_labels = self.lNode.get_current_node_data(ldf,llabels)
         if not ldf is None:
             return ldf,l_new_labels
         
-        rdf, r_new_labels = self.rNode.get_current_node_data(rdf,rlables)
+        rdf, r_new_labels = self.rNode.get_current_node_data(rdf,rlabels)
         if not rdf is None:
             return rdf, r_new_labels
         
