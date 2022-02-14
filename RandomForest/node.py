@@ -99,8 +99,8 @@ class Node:
         ldf = dataset.iloc[i_l]
         rdf = dataset.iloc[i_r]
         
-        llables = labels[i_l]
-        rlables = labels[i_r]        
+        llabels = labels[i_l]
+        rlabels = labels[i_r]        
         
         # si le noeud gauche est present, l'explorer et retourner ce qu'il retourne si ce n'est pas nul
         ldf, l_new_labels = self.lNode.get_current_node_data(ldf,llables)
