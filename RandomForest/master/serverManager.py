@@ -68,6 +68,9 @@ class ServerManager():
         data = {'dataset': test_dataset.to_dict(), 'labels': test_labels.to_dict()}
         return self.__get(data,'local-accuracy')
     
+    def get_clients_features(self):
+        return self.__get({}, 'features')
+    
     def __del__(self):
         self.pool.close()
         self.pool.join()

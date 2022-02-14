@@ -58,7 +58,7 @@ def main():
     network_creator.split_dataset()
 
     # A valider
-    master = Master(df, labels, server_manager)
+    master = Master(server_manager)
     master.train(n=5)
 
 

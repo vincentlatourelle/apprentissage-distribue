@@ -41,7 +41,7 @@ class Client():
         total_gini = Client.gini_impurity(labels)
 
         # Si rien est a separer
-        if total_gini == 0 or len(dataset) <= 4:
+        if total_gini == 0 or len(dataset) <= 2:
             return features[0], 0
 
         # calcul de gini pour chaque feature
@@ -115,6 +115,9 @@ class Client():
             values.append(np.random.default_rng().uniform(low=min, high=max))
 
         return values
+
+    def get_features(self):
+        return list(self.dataset.columns)
 
     @staticmethod
     def gini_impurity(y):

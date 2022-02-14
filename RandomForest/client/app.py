@@ -82,6 +82,11 @@ def get_thresholds():
 
     return jsonify(values)
 
+@app.route('/features')
+def get_features():
+    features = c.get_features()
+    
+    return jsonify(features)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", debug=True)

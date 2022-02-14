@@ -14,13 +14,10 @@ from RandomForest.node import Node
 
 
 class Master():
-    def __init__(self, dataset, labels, server_manager: ServerManager) -> None:
-        self.dataset = dataset
-        self.labels = labels
-        self.test_dataset = None
-        self.test_labels = None
+    def __init__(self, server_manager: ServerManager) -> None:
         self.server_manager = server_manager
         self.forest = RandomForest()
+        self.features = None
 
     def select_features(self):
         """ Choisi un nombre aléatoire de features parmi la liste de features
@@ -29,8 +26,7 @@ class Master():
         :rtype: np.array de dimension n_features
         """
 
-        features = self.dataset.columns
-        return np.random.choice(features, replace=False, size=np.random.randint(2, np.sqrt(len(features)) + 4))
+        return np.random.choice(self.features, replace=False, size=np.random.randint(2, np.sqrt(len(self.features)) + 4))
 
     def get_thresholds(self, features, thresholds):
         """ Pour chaque features, recupere le min et le max, puis definit le threshold qui
@@ -135,24 +131,28 @@ class Master():
         """ Entraine le modele en construisant un arbre de facon distribuee puis en
             l'ajoutant au Random Forest
         """
+        self.get_clients_features()
+        
         for t in range(n):
             current_tree = Node()
-            self.build_tree(current_tree, current_tree, depth=15)
+            self.build_tree(current_tree, current_tree, depth=3)
 
             # Ajouter current_tree a la foret
             self.forest.add(current_tree)
 
         # Envoyer la foret aux clients
 
-    def get_federated_accuracy(self):
-        res = [self.forest.predict(row) for index, row in self.test_dataset.iterrows()]
-        print(sum([int(value != self.test_labels.values[x]) for x, value in enumerate(res)]) / len(self.test_labels))
+    def get_clients_features(self):
+        self.features = self.server_manager.get_clients_features()[0]
+    # def get_federated_accuracy(self):
+    #     res = [self.forest.predict(row) for index, row in self.test_dataset.iterrows()]
+    #     print(sum([int(value != self.test_labels.values[x]) for x, value in enumerate(res)]) / len(self.test_labels))
 
-    def get_centralised_accuracy(self):
-        dt = ExtraTreesClassifier()
-        dt.fit(self.dataset.values, self.labels.values)
-        res = dt.predict(self.test_dataset)
-        print(sum([int(value != self.test_labels.values[x]) for x, value in enumerate(res)]) / len(self.test_labels))
+    # def get_centralised_accuracy(self):
+    #     dt = ExtraTreesClassifier()
+    #     dt.fit(self.dataset.values, self.labels.values)
+    #     res = dt.predict(self.test_dataset)
+    #     print(sum([int(value != self.test_labels.values[x]) for x, value in enumerate(res)]) / len(self.test_labels))
 
-    def get_local_accuracy(self):
-        print(np.mean(self.server_manager.get_clients_local_accuracy(self.test_dataset, self.test_labels)))
+    # def get_local_accuracy(self):
+    #     print(np.mean(self.server_manager.get_clients_local_accuracy(self.test_dataset, self.test_labels)))
