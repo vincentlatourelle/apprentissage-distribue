@@ -169,10 +169,7 @@ class Master():
             self.forest.add(current_tree)
         
         # Envoyer la foret aux clients
-        print([x.get_custom_dict() for x in self.forest.forest])
-        self.get_federated_accuracy()
-        self.get_centralised_accuracy()
-        self.get_local_accuracy()
+
 
     def get_federated_accuracy(self):
         res = [self.forest.predict(row) for index, row in self.test_dataset.iterrows()]
