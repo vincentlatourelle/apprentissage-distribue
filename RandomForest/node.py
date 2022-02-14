@@ -123,6 +123,6 @@ class Node:
     def left_most_leaf(self):
         current_node = self
         while current_node.value is None:
-            current_node = current_node.rNode
+            current_node = current_node.lNode
             
         return current_node.value
