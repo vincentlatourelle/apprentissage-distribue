@@ -1,5 +1,5 @@
 from serverManager import ServerManager
-from master import Master
+from master import FederatedRandomForest
 import pandas as pd
 
 
@@ -11,7 +11,7 @@ def main():
 
     server_manager = ServerManager(
         ["http://localhost:5001", "http://localhost:5002", "http://localhost:5003", "http://localhost:5004"])
-    master = Master(df, labels, server_manager)
+    master = FederatedRandomForest(df, labels, server_manager)
 
     master.train()
 

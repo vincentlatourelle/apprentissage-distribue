@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from sklearn.ensemble import ExtraTreesClassifier
 
-from master import Master
+from master import FederatedRandomForest
 from serverManager import ServerManager
 
 
@@ -72,7 +72,7 @@ def main():
     network_creator.split_dataset()
 
     # A valider
-    master = Master(server_manager)
+    master = FederatedRandomForest(server_manager)
     master.train(n=5)
     
     print(network_creator.get_local_accuracy())

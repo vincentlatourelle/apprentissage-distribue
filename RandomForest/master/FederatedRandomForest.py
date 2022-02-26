@@ -13,7 +13,7 @@ from RandomForest.randomForest import RandomForest
 from RandomForest.node import Node
 
 
-class Master():
+class FederatedRandomForest():
     def __init__(self, server_manager: ServerManager) -> None:
         self.server_manager = server_manager
         self.forest = RandomForest()
