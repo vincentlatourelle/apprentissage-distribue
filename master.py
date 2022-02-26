@@ -26,7 +26,10 @@ class Master:
         
     def test(self,type,network,distribution,test_dataset=None,test_labels=None):
         if type=="rf" and distribution=="federated":
-            pass
+            response = self.server_manager.get({},'federated-accuracy')
+            n = [x['n'] for x in response]
+            err = [x['error'] for x in response]
+            return 1 - sum([n[x]*err[x] for x in range(len(n))])/sum(n)
         
         elif type=="rf" and distribution=="localised":
             return 1 - np.mean(self.server_manager.get({},'local-accuracy'))

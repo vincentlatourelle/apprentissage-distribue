@@ -85,6 +85,9 @@ def main():
     
     print("localise")
     print(master.test(type="rf",network=None,distribution="localised"))
+    
+    print("federe")
+    print(master.test(type="rf",network=None,distribution="federated"))
     # print(network_creator.get_local_accuracy())
     # print(network_creator.get_centralised_accuracy())
     # print(network_creator.get_federated_accuracy(master.forest))

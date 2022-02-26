@@ -142,6 +142,8 @@ class FederatedRandomForest():
             self.forest.add(current_tree)
 
         # Envoyer la foret aux clients
+        json_forest = self.forest.serialize() 
+        self.server_manager.post([{'forest':json_forest}]*len(self.server_manager.clients), 'random-forest')
 
     def get_clients_features(self):
         self.features = self.server_manager.get({}, 'features')[0]

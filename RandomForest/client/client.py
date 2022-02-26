@@ -83,6 +83,12 @@ class Client():
         :type random_forest: RandomForest
         """
         self.forest = random_forest
+        
+    def get_federated_accuracy(self):
+        res = [self.forest.predict(row) for index, row in self.test_dataset.iterrows()]
+        error = sum([int(value != self.test_labels[x]) for x, value in enumerate(res)]) / len(self.test_labels)
+        
+        return error, len(self.test_dataset)
 
     def get_local_accuracy(self):
 
