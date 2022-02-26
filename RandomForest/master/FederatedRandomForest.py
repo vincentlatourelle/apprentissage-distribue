@@ -1,6 +1,4 @@
 import numpy as np
-from sklearn.ensemble import ExtraTreesClassifier
-from serverManager import ServerManager
 
 import os
 import sys
@@ -14,7 +12,7 @@ from RandomForest.node import Node
 
 
 class FederatedRandomForest():
-    def __init__(self, server_manager: ServerManager) -> None:
+    def __init__(self, server_manager) -> None:
         self.server_manager = server_manager
         self.forest = RandomForest()
         self.features = None
@@ -130,7 +128,7 @@ class FederatedRandomForest():
 
         return current_root
 
-    def train(self, n=100):
+    def train(self, n=100,depth=3):
         """ Entraine le modele en construisant un arbre de facon distribuee puis en
             l'ajoutant au Random Forest
         """
@@ -138,7 +136,7 @@ class FederatedRandomForest():
         
         for t in range(n):
             current_tree = Node()
-            self.build_tree(current_tree, current_tree, depth=3)
+            self.build_tree(current_tree, current_tree, depth=depth)
 
             # Ajouter current_tree a la foret
             self.forest.add(current_tree)

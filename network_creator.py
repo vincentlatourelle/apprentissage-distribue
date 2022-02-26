@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from sklearn.ensemble import ExtraTreesClassifier
 
-from federatedRandomForest import FederatedRandomForest
+from master import Master
 from serverManager import ServerManager
 
 
@@ -60,7 +60,7 @@ class NetworkCreator:
         
         
 def main():
-    df = pd.read_csv("../BCWdata.csv")
+    df = pd.read_csv("./BCWdata.csv")
 
     labels = df['diagnosis']
     df.drop(["id", 'diagnosis', 'Unnamed: 32'], axis=1, inplace=True)
@@ -71,14 +71,12 @@ def main():
     network_creator.split_dataset()
 
     # A valider
-    master = FederatedRandomForest(server_manager)
-    master.train(n=5)
+    master = Master(server_manager)
+    master.train(type="rf",network=None,distribution="federated",n=5,depth=3)
     
     # print(network_creator.get_local_accuracy())
     # print(network_creator.get_centralised_accuracy())
     # print(network_creator.get_federated_accuracy(master.forest))
-    
-
 
 if __name__ == '__main__':
     main()
