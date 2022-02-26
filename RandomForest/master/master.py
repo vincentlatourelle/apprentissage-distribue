@@ -52,13 +52,10 @@ class FederatedRandomForest():
         return values
 
     def get_label(self, current_tree):
-        data = {"current_tree": current_tree.serialize()}
-        labels = np.concatenate(self.server_manager.get(data, 'leaf').tolist(), axis=0)
-        
+        labels = np.concatenate(self.server_manager.get_leafs(current_tree).tolist(), axis=0)
         print("<-- Le master recoit les labels des clients")
         print(labels)
         print("**************************************************************************************")
-        
         result, count = np.unique(labels, return_counts=True) 
         if len(result) == 0:
             return "resultat_invalid"
@@ -78,7 +75,7 @@ class FederatedRandomForest():
         
         print("--> Le master envoie les features aux clients")
         
-        thresholds = self.server_manager.get({"features": features.tolist(), "current_tree": current_root.serialize()},'thresholds')
+        thresholds = self.server_manager.get_thresholds(features.tolist(),current_root)
 
         print("<-- Le master recoit les thresholds des clients")
         print(thresholds)
@@ -90,8 +87,8 @@ class FederatedRandomForest():
         print("--> Le master envoie les thresholds selectionnes aux clients")
         print( thresholds )
         
-        best_threshold = self.server_manager.get({"features": features.tolist(), "thresholds": thresholds.tolist(),
-                "current_tree": current_root.serialize()},'best-threshold')
+        best_threshold = self.server_manager.get_best_threshold_from_clients(
+            features, thresholds, current_root)
         
         print("<-- Le master recoit les meilleurs features et le nombre de donnees actuels des clients")
         print( best_threshold )
@@ -146,5 +143,5 @@ class FederatedRandomForest():
         # Envoyer la foret aux clients
 
     def get_clients_features(self):
-        self.features = self.server_manager.get({}, 'features')[0]
+        self.features = self.server_manager.get_clients_features()[0]
 

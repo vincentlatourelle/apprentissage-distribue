@@ -1,6 +1,6 @@
 
 
-from RandomForest.master.FederatedRandomForest import FederatedRandomForest
+from RandomForest.master.federatedRandomForest import FederatedRandomForest
 
 
 class Master:

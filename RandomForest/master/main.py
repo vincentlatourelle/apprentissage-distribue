@@ -1,5 +1,5 @@
 from serverManager import ServerManager
-from master import FederatedRandomForest
+from federatedRandomForest import FederatedRandomForest
 import pandas as pd
 
 
