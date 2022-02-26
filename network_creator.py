@@ -10,8 +10,7 @@ class NetworkCreator:
     def __init__(self, dataset, labels, server_manager: ServerManager) -> None:
         self.dataset = dataset
         self.labels = labels
-        self.test_dataset = None
-        self.test_labels = None
+
         self.server_manager = server_manager
 
     def split_dataset(self):
@@ -20,18 +19,7 @@ class NetworkCreator:
         """
 
         n_clients = len(self.server_manager.clients)
-
-        # Selectionne 80% des donnees pour l'entrainement et 20% pour les tests
-        train_idx = np.random.choice(
-            len(self.dataset) - 1, replace=False, size=int(len(self.dataset) * 0.8))
-
-        self.test_dataset = self.dataset.loc[~self.dataset.index.isin(
-            train_idx)]
-        self.test_labels = self.labels.loc[~self.labels.index.isin(train_idx)]
-
-        self.dataset = self.dataset.loc[train_idx]
-        self.labels = self.labels.loc[train_idx]
-
+        
         # Separe les donnees equitablement entre les n_clients
         # La separation se fait en ordre (les x premieres donnees vont
         # au premier clients, les x prochaines au deuxieme, etc.)
@@ -57,7 +45,19 @@ class NetworkCreator:
 
     # def get_local_accuracy(self):
     #     return (1 - np.mean(self.server_manager.get_clients_local_accuracy(self.test_dataset, self.test_labels)))
-        
+      
+def split(dataset, labels):
+    train_idx = np.random.choice(
+        len(dataset) - 1, replace=False, size=int(len(dataset) * 0.8))
+    
+    test_dataset = dataset.loc[~dataset.index.isin(
+        train_idx)]
+    test_labels = labels.loc[~labels.index.isin(train_idx)]
+
+    dataset = dataset.loc[train_idx]
+    labels = labels.loc[train_idx]
+    
+    return dataset,labels,test_dataset,test_labels  
         
 def main():
     df = pd.read_csv("./BCWdata.csv")
@@ -71,9 +71,20 @@ def main():
     network_creator.split_dataset()
 
     # A valider
+    # centralise
     master = Master(server_manager)
+    dataset,labels,test_dataset,test_labels = split(df,labels)
+    master.train(type="rf",network=None,distribution="centralised",n=100,depth=300,dataset=dataset,labels=labels)
+    
+    print(master.test(type="rf",network=None,distribution="centralised",test_dataset=test_dataset,test_labels=test_labels.values))
+    
     master.train(type="rf",network=None,distribution="federated",n=5,depth=3)
     
+    print("Centralise")
+    print(master.test(type="rf",network=None,distribution="centralised",test_dataset=test_dataset,test_labels=test_labels.values))
+    
+    print("localise")
+    print(master.test(type="rf",network=None,distribution="localised"))
     # print(network_creator.get_local_accuracy())
     # print(network_creator.get_centralised_accuracy())
     # print(network_creator.get_federated_accuracy(master.forest))
