@@ -40,3 +40,66 @@ services:
     command: flask run --port 5000 --host 0.0.0.0
     volumes:
       - .:/code
+
+  client5:
+    build:
+      context: ./
+      dockerfile: ./RandomForest/client/Dockerfile
+    ports:
+      - "5005:5000"
+    command: flask run --port 5000 --host 0.0.0.0
+    volumes:
+      - .:/code
+
+  client6:
+    build:
+      context: ./
+      dockerfile: ./RandomForest/client/Dockerfile
+    ports:
+      - "5006:5000"
+    command: flask run --port 5000 --host 0.0.0.0
+    volumes:
+      - .:/code
+
+
+  client7:
+    build:
+      context: ./
+      dockerfile: ./RandomForest/client/Dockerfile
+    ports:
+      - "5007:5000"
+    command: flask run --port 5000 --host 0.0.0.0
+    volumes:
+      - .:/code
+
+  client8:
+    build:
+      context: ./
+      dockerfile: ./RandomForest/client/Dockerfile
+    ports:
+      - "5008:5000"
+    command: flask run --port 5000 --host 0.0.0.0
+    volumes:
+      - .:/code
+
+
+  client9:
+    build:
+      context: ./
+      dockerfile: ./RandomForest/client/Dockerfile
+    ports:
+      - "5009:5000"
+    command: flask run --port 5000 --host 0.0.0.0
+    volumes:
+      - .:/code
+
+
+  client10:
+    build:
+      context: ./
+      dockerfile: ./RandomForest/client/Dockerfile
+    ports:
+      - "5010:5000"
+    command: flask run --port 5000 --host 0.0.0.0
+    volumes:
+      - .:/code

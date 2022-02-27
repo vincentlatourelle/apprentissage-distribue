@@ -144,10 +144,6 @@ class Client():
         self.dataset = dataset.loc[train_idx].copy()
         self.labels = labels.loc[train_idx].values.T[0]
 
-        
-        
-        
-
     @staticmethod
     def gini_impurity(y):
         """ Calcul l'impureté de Gini
