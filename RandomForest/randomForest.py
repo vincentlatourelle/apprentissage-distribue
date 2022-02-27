@@ -1,4 +1,5 @@
 import numpy as np
+from RandomForest.node import Node
 
 
 class RandomForest:
@@ -24,3 +25,10 @@ class RandomForest:
         result = [tree.predict(x) for tree in self.forest]
         result, count = np.unique(result, return_counts=True)
         return result[np.argmax(count)]
+    
+    def serialize(self):
+        return [x.serialize() for x in self.forest]
+    
+    def deserialize(self,forest):
+        for x in forest:
+            self.add(Node.deserialize(x))

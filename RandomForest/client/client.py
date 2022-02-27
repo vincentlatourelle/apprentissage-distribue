@@ -9,6 +9,8 @@ class Client():
         self.dataset = dataset
         self.forest = None
         self.labels = None
+        self.test_dataset = None
+        self.test_labels = None
 
     def __bootstrap(self, x):
         """ Effectue un bootstap sur le dataset x
@@ -81,15 +83,20 @@ class Client():
         :type random_forest: RandomForest
         """
         self.forest = random_forest
+        
+    def get_federated_accuracy(self):
+        res = [self.forest.predict(row) for index, row in self.test_dataset.iterrows()]
+        error = sum([int(value != self.test_labels[x]) for x, value in enumerate(res)]) / len(self.test_labels)
+        
+        return error, len(self.test_dataset)
 
-    def get_local_accuracy(self, test_dataset, test_labels):
+    def get_local_accuracy(self):
 
         # Entrainer un modele de randomForest (scikit-learn) et retourner l'accuracy
-
         dt = ExtraTreesClassifier()
         dt.fit(self.dataset.values, self.labels)
-        res = dt.predict(test_dataset)
-        return sum([int(value != test_labels[x]) for x, value in enumerate(res)]) / len(test_labels)
+        res = dt.predict(self.test_dataset)
+        return sum([int(value != self.test_labels[x]) for x, value in enumerate(res)]) / len(self.test_labels)
 
     def get_thresholds(self, features, current_tree):
         """ Pour chaque features, recupere le min et le max, puis definit le threshold qui
@@ -118,6 +125,24 @@ class Client():
 
     def get_features(self):
         return list(self.dataset.columns)
+    
+    def set_dataset(self,dataset, labels):
+        dataset = dataset.reset_index(drop=True)
+        self.labels = labels
+        
+        labels = pd.DataFrame(labels).reset_index(drop=True)
+        
+        train_idx = np.random.choice(
+            len(dataset) - 1, replace=False, size=int(len(dataset) * 0.8))
+        
+        
+        self.test_dataset = dataset.loc[~dataset.index.isin(
+            train_idx)].copy()
+        self.test_labels = labels.loc[~labels.index.isin(train_idx)].values.T[0]
+
+        
+        self.dataset = dataset.loc[train_idx].copy()
+        self.labels = labels.loc[train_idx].values.T[0]
 
     @staticmethod
     def gini_impurity(y):

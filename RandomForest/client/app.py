@@ -4,12 +4,14 @@ import numpy as np
 
 import pandas as pd
 from flask import Flask, jsonify, request
+
 from client import Client
 
 currentdir = os.path.dirname(os.path.realpath(__file__))
 rootdir = os.path.join(currentdir, "../../")
 sys.path.append(rootdir)
 
+from RandomForest.randomForest import RandomForest
 from RandomForest.node import Node
 
 app = Flask(__name__)
@@ -39,8 +41,9 @@ def get_leaf():
 
 
 @app.route('/random-forest', methods=['POST'])
-def set_new_forest(random_forest):
-    random_forest = request.get_json()["random_forest"]
+def set_new_forest():
+    random_forest = RandomForest()
+    random_forest.deserialize(request.get_json()["forest"])
     c.set_new_forest(random_forest)
 
     return "", 200
@@ -48,13 +51,15 @@ def set_new_forest(random_forest):
 
 @app.route('/local-accuracy')
 def get_local_accuracy():
-    dataset_dict = request.get_json()["dataset"]
-    dataset_labels = np.array(list(request.get_json()["labels"].values()))
-    dataset = pd.DataFrame.from_dict(dataset_dict)
-
-    accuracy = c.get_local_accuracy(dataset, dataset_labels)
+    accuracy = c.get_local_accuracy()
 
     return jsonify(accuracy)
+
+@app.route('/federated-accuracy')
+def get_federated_accuracy():
+    error,n = c.get_federated_accuracy()
+
+    return jsonify({"error":error, "n":n})
 
 
 @app.route('/dataset', methods=['POST'])
@@ -65,8 +70,8 @@ def set_dataset():
     dataset_dict = request.get_json()["dataset"]
     dataset_labels = np.array(list(request.get_json()["labels"].values()))
     dataset = pd.DataFrame.from_dict(dataset_dict)
-    c.dataset = dataset
-    c.labels = dataset_labels
+    
+    c.set_dataset(dataset,dataset_labels)
 
     return "", 200
 

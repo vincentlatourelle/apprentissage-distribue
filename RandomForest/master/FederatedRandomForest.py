@@ -1,6 +1,4 @@
 import numpy as np
-from sklearn.ensemble import ExtraTreesClassifier
-from serverManager import ServerManager
 
 import os
 import sys
@@ -13,8 +11,8 @@ from RandomForest.randomForest import RandomForest
 from RandomForest.node import Node
 
 
-class Master():
-    def __init__(self, server_manager: ServerManager) -> None:
+class FederatedRandomForest():
+    def __init__(self, server_manager) -> None:
         self.server_manager = server_manager
         self.forest = RandomForest()
         self.features = None
@@ -52,10 +50,13 @@ class Master():
         return values
 
     def get_label(self, current_tree):
-        labels = np.concatenate(self.server_manager.get_leafs(current_tree).tolist(), axis=0)
+        data = {"current_tree": current_tree.serialize()}
+        labels = np.concatenate(self.server_manager.get(data, 'leaf').tolist(), axis=0)
+        
         print("<-- Le master recoit les labels des clients")
         print(labels)
         print("**************************************************************************************")
+        
         result, count = np.unique(labels, return_counts=True) 
         if len(result) == 0:
             return "resultat_invalid"
@@ -75,7 +76,7 @@ class Master():
         
         print("--> Le master envoie les features aux clients")
         
-        thresholds = self.server_manager.get_thresholds(features.tolist(),current_root)
+        thresholds = self.server_manager.get({"features": features.tolist(), "current_tree": current_root.serialize()},'thresholds')
 
         print("<-- Le master recoit les thresholds des clients")
         print(thresholds)
@@ -87,8 +88,8 @@ class Master():
         print("--> Le master envoie les thresholds selectionnes aux clients")
         print( thresholds )
         
-        best_threshold = self.server_manager.get_best_threshold_from_clients(
-            features, thresholds, current_root)
+        best_threshold = self.server_manager.get({"features": features.tolist(), "thresholds": thresholds.tolist(),
+                "current_tree": current_root.serialize()},'best-threshold')
         
         print("<-- Le master recoit les meilleurs features et le nombre de donnees actuels des clients")
         print( best_threshold )
@@ -127,7 +128,7 @@ class Master():
 
         return current_root
 
-    def train(self, n=100):
+    def train(self, n=100,depth=3):
         """ Entraine le modele en construisant un arbre de facon distribuee puis en
             l'ajoutant au Random Forest
         """
@@ -135,13 +136,16 @@ class Master():
         
         for t in range(n):
             current_tree = Node()
-            self.build_tree(current_tree, current_tree, depth=3)
+            self.build_tree(current_tree, current_tree, depth=depth)
 
             # Ajouter current_tree a la foret
             self.forest.add(current_tree)
 
         # Envoyer la foret aux clients
+        json_forest = self.forest.serialize() 
+        
+        self.server_manager.post([{'forest':json_forest}]*len(self.server_manager.clients), 'random-forest')
 
     def get_clients_features(self):
-        self.features = self.server_manager.get_clients_features()[0]
+        self.features = self.server_manager.get({}, 'features')[0]
 
