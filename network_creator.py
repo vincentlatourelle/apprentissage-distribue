@@ -85,14 +85,13 @@ def main():
     # A valider
     # centralise
     master = Master(server_manager)
-    dataset, labels, test_dataset, test_labels = split(df, labels)
-    master.train(type="rf", network=None, distribution="centralised", n=100, depth=300, dataset=dataset, labels=labels)
-
-    print(master.test(type="rf", network=None, distribution="centralised", test_dataset=test_dataset,
-                      test_labels=test_labels.values))
-
-    master.train(type="rf", network=None, distribution="federated", n=5, depth=3)
-
+    dataset,labels,test_dataset,test_labels = split(df,labels)
+    master.train(type="rf",network=None,distribution="centralised",n=100,depth=300,dataset=dataset,labels=labels)
+    
+    print(master.test(type="rf",network=None,distribution="centralised",test_dataset=test_dataset,test_labels=test_labels.values))
+    
+    master.train(type="rf",network=None,distribution="federated",n=10,depth=15)
+    
     print("Centralise")
     print(master.test(type="rf", network=None, distribution="centralised", test_dataset=test_dataset,
                       test_labels=test_labels.values))

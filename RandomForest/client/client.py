@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import ExtraTreesClassifier
+from sklearn.ensemble import RandomForestClassifier
 
 
 class Client:
@@ -42,8 +42,10 @@ class Client:
         total_gini = Client.gini_impurity(labels)
 
         # Si rien est a separer
-        if total_gini == 0 or len(dataset) <= 2:
-            return features[0], 0
+        if total_gini == 0:
+            return "pure", 0
+        if len(dataset) <= 2:
+            return "no-data", 0
 
         # calcul de gini pour chaque feature
         ds_star = dataset[features]
@@ -56,6 +58,9 @@ class Client:
         i_best_gini = np.argmax(ginis)
         best_gini_feature = features[i_best_gini]
         n_data = len(labels)
+        
+        if ginis[i_best_gini] == 0:
+            return "no-gain", 0
 
         return best_gini_feature, n_data
 
@@ -101,7 +106,7 @@ class Client:
         :rtype: float
         """
         # Entrainer un modele de randomForest (scikit-learn) et retourner l'accuracy
-        dt = ExtraTreesClassifier()
+        dt = RandomForestClassifier()
         dt.fit(self.dataset.values, self.labels)
         res = dt.predict(self.test_dataset)
         return sum([int(value != self.test_labels[x]) for x, value in enumerate(res)]) / len(self.test_labels)
@@ -121,13 +126,16 @@ class Client:
         dataset = self.dataset.copy()
         if current_tree is not None:
             dataset, labels = current_tree.get_current_node_data(dataset, labels)
-
+            
         values = []
         for f in features:
-            col = self.dataset[f]
-            min = col.min()
-            max = col.max()
-            values.append(np.random.default_rng().uniform(low=min, high=max))
+            col = dataset[f]
+            minimum = col.min()
+            maximum = col.max()
+            if  np.isnan(minimum) or np.isnan(maximum):
+                values.append(np.nan)
+            else:
+                values.append(np.random.default_rng().uniform(low=minimum, high=maximum))
 
         return values
 
