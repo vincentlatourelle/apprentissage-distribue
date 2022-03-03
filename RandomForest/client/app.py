@@ -1,11 +1,10 @@
-import json
-import os, sys
+import os
+import sys
+
 import numpy as np
-
 import pandas as pd
-from flask import Flask, jsonify, request
-
 from client import Client
+from flask import Flask, jsonify, request
 
 currentdir = os.path.dirname(os.path.realpath(__file__))
 rootdir = os.path.join(currentdir, "../../")
@@ -26,7 +25,10 @@ def get_best_threshold():
     current_tree = Node.deserialize(request.get_json()['current_tree'])
 
     feature, n_data = c.get_best_threshold(features, threshold, current_tree)
-    print("Le client recoit l'arbre actuel et threshold choisis par le master et retourne le meilleur feature et son nombre de donnes", file=sys.stderr)
+    print(
+        "Le client recoit l'arbre actuel et threshold choisis par le master et retourne le meilleur feature et son "
+        "nombre de donnes",
+        file=sys.stderr)
     return jsonify({"feature": feature, "n_data": n_data})
 
 
@@ -36,7 +38,7 @@ def get_leaf():
     labels = c.get_leaf(current_tree)
 
     print("Le client recoit l'arbre actuel et renvoit les labels associes au noeud actuel", file=sys.stderr)
-    
+
     return jsonify(labels.tolist())
 
 
@@ -55,11 +57,12 @@ def get_local_accuracy():
 
     return jsonify(accuracy)
 
+
 @app.route('/federated-accuracy')
 def get_federated_accuracy():
-    error,n = c.get_federated_accuracy()
+    error, n = c.get_federated_accuracy()
 
-    return jsonify({"error":error, "n":n})
+    return jsonify({"error": error, "n": n})
 
 
 @app.route('/dataset', methods=['POST'])
@@ -70,8 +73,8 @@ def set_dataset():
     dataset_dict = request.get_json()["dataset"]
     dataset_labels = np.array(list(request.get_json()["labels"].values()))
     dataset = pd.DataFrame.from_dict(dataset_dict)
-    
-    c.set_dataset(dataset,dataset_labels)
+
+    c.set_dataset(dataset, dataset_labels)
 
     return "", 200
 
@@ -82,16 +85,18 @@ def get_thresholds():
     features = request.get_json()['features']
 
     print("Le client recoit les features et l'arbre actuel et renvoit une valeur pour chaque feature", file=sys.stderr)
-    
+
     values = c.get_thresholds(features, current_tree)
 
     return jsonify(values)
 
+
 @app.route('/features')
 def get_features():
     features = c.get_features()
-    
+
     return jsonify(features)
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", debug=True)
