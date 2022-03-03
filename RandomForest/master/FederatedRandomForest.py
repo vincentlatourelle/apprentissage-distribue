@@ -41,8 +41,8 @@ class FederatedRandomForest():
 
         for f in range(len(features)):
             col = thresholds[:, f]
-            min = np.min(col)
-            max = np.max(col)
+            min = np.nanmin(col)
+            max = np.nanmax(col)
 
             values = np.append(
                 values, np.random.default_rng().uniform(low=min, high=max))
@@ -75,6 +75,8 @@ class FederatedRandomForest():
         features = self.select_features()
         
         print("--> Le master envoie les features aux clients")
+        print(features)
+        
         
         thresholds = self.server_manager.get({"features": features.tolist(), "current_tree": current_root.serialize()},'thresholds')
 
@@ -96,6 +98,9 @@ class FederatedRandomForest():
         print("**************************************************************************************")
         # Vote majoritaire pour avoir la meilleure separation
         votes = dict.fromkeys(features, 0)
+        votes['pure'] = 0
+        votes['no-data'] = 0
+        votes["no-gain"] = 0
 
         for c in best_threshold:
             votes[c['feature']] += c["n_data"]
@@ -120,7 +125,8 @@ class FederatedRandomForest():
         current_node.rNode = rNode
         rres = self.build_tree(rNode, current_root, depth - 1)
 
-        # Fusionne si la separation etait invalide (surement un probleme qui fait qu'on a des ensembles vide relativement souvent)
+        # Fusionne si la separation etait invalide
+        # Devrait pas etre utilise
         if lres == "resultat_invalid":
             current_node.lNode.value = current_node.rNode.left_most_leaf()
         elif rres == "resultat_invalid":
