@@ -27,8 +27,22 @@ class RandomForest:
         return result[np.argmax(count)]
     
     def serialize(self):
+        """
+        Serialisation du Random Forest (dictionnaire --> json)
+
+        :return: Arbre serialise
+        :rtype: str (json)
+        """
         return [x.serialize() for x in self.forest]
     
-    def deserialize(self,forest):
+    def deserialize(self, forest):
+        """
+        Deserialisation du Random Forest (json --> dictionnaire)
+
+        :param forest:
+        :type forest:
+        :return: Arbre deserialise
+        :rtype: dict
+        """
         for x in forest:
             self.add(Node.deserialize(x))
