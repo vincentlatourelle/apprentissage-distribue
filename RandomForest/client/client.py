@@ -1,10 +1,9 @@
-import sys
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 
 
-class Client():
+class Client:
     def __init__(self, dataset=None) -> None:
         self.dataset = dataset
         self.forest = None
@@ -76,8 +75,8 @@ class Client():
         labels = self.labels.copy()
         dataset = self.dataset.copy()
         if current_tree is not None:
-            dataset,labels = current_tree.get_current_node_data(dataset,labels)
-            
+            dataset, labels = current_tree.get_current_node_data(dataset, labels)
+
         # retourner le nombre de valeurs perturbees pour chaque classe dans le dataset courant
         return labels
 
@@ -88,15 +87,24 @@ class Client():
         :type random_forest: RandomForest
         """
         self.forest = random_forest
-        
+
     def get_federated_accuracy(self):
+        """
+        Calcule la précision de l'algo pour une distribution federee
+        :return: Precision federee
+        :rtype: float
+        """
         res = [self.forest.predict(row) for index, row in self.test_dataset.iterrows()]
         error = sum([int(value != self.test_labels[x]) for x, value in enumerate(res)]) / len(self.test_labels)
-        
+
         return error, len(self.test_dataset)
 
     def get_local_accuracy(self):
-
+        """
+        Calcule la précision de l'algo pour une distribution locale
+        :return: Precision locale
+        :rtype: float
+        """
         # Entrainer un modele de randomForest (scikit-learn) et retourner l'accuracy
         dt = RandomForestClassifier()
         dt.fit(self.dataset.values, self.labels)
@@ -132,23 +140,33 @@ class Client():
         return values
 
     def get_features(self):
+        """
+        Recupere les features (colonnes) du dataset du client sous forme de liste
+
+        :return: liste des features du client
+        :rtype: list
+        """
         return list(self.dataset.columns)
-    
-    def set_dataset(self,dataset, labels):
+
+    def set_dataset(self, dataset, labels):
+        """
+        Mise a jour du dataset (et des labels) du client
+
+        :param dataset: dataset a modifier
+        :param labels: liste des labels a modifier
+        """
         dataset = dataset.reset_index(drop=True)
         self.labels = labels
-        
+
         labels = pd.DataFrame(labels).reset_index(drop=True)
-        
+
         train_idx = np.random.choice(
             len(dataset) - 1, replace=False, size=int(len(dataset) * 0.8))
-        
-        
+
         self.test_dataset = dataset.loc[~dataset.index.isin(
             train_idx)].copy()
         self.test_labels = labels.loc[~labels.index.isin(train_idx)].values.T[0]
 
-        
         self.dataset = dataset.loc[train_idx].copy()
         self.labels = labels.loc[train_idx].values.T[0]
 
@@ -168,6 +186,20 @@ class Client():
 
     @staticmethod
     def gini_gain(col, y, thresholds, total_gini):
+        """
+        Permet de calculer le gain de Gini
+
+        :param col: Nom de la colonne associé au seuil (threshold)
+        :type col: str
+        :param y: Liste des differents labels
+        :type y: list
+        :param thresholds: Seuil de séparation du noeud de l'arbre associe a une colonne
+        :type thresholds: float
+        :param total_gini:
+        :type total_gini: float
+        :return: Le gain de Gini
+        :rtype: float
+        """
         threshold = thresholds[col.name][0]
         i_l = np.where(col <= threshold)[0]
         i_r = np.where(col > threshold)[0]

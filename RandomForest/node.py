@@ -17,7 +17,7 @@ class Node:
         :return: label
         :rtype: str
         """
-        if self.value != None:
+        if self.value is not None:
             return self.value
         if x[self.feature] <= self.threshold:
             return self.lNode.predict(x)
@@ -30,7 +30,7 @@ class Node:
         :return: dictionnaire decrivant le Node
         :rtype: dict
         """
-        if self.value != None:
+        if self.value is not None:
             custom_dict = {
                 "value": self.value,
             }

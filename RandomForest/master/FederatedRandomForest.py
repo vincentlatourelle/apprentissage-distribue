@@ -11,7 +11,7 @@ from RandomForest.randomForest import RandomForest
 from RandomForest.node import Node
 
 
-class FederatedRandomForest():
+class FederatedRandomForest:
     def __init__(self, server_manager) -> None:
         self.server_manager = server_manager
         self.forest = RandomForest()
@@ -24,7 +24,8 @@ class FederatedRandomForest():
         :rtype: np.array de dimension n_features
         """
 
-        return np.random.choice(self.features, replace=False, size=np.random.randint(2, np.sqrt(len(self.features)) + 4))
+        return np.random.choice(self.features, replace=False,
+                                size=np.random.randint(2, np.sqrt(len(self.features)) + 4))
 
     def get_thresholds(self, features, thresholds):
         """ Pour chaque features, recupere le min et le max, puis definit le threshold qui
@@ -52,17 +53,17 @@ class FederatedRandomForest():
     def get_label(self, current_tree):
         data = {"current_tree": current_tree.serialize()}
         labels = np.concatenate(self.server_manager.get(data, 'leaf').tolist(), axis=0)
-        
+
         print("<-- Le master recoit les labels des clients")
         print(labels)
         print("**************************************************************************************")
-        
-        result, count = np.unique(labels, return_counts=True) 
+
+        result, count = np.unique(labels, return_counts=True)
         if len(result) == 0:
             return "resultat_invalid"
         return result[np.argmax(count)]
-    
-    def build_tree(self, current_node,current_root, depth=15):
+
+    def build_tree(self, current_node, current_root, depth=15):
         """Construit un arbre de facon distribuee
 
         :param current_tree: arbre actuellement en construction
@@ -73,7 +74,7 @@ class FederatedRandomForest():
             return current_node.value
 
         features = self.select_features()
-        
+
         print("--> Le master envoie les features aux clients")
         print(features)
         
@@ -83,18 +84,17 @@ class FederatedRandomForest():
         print("<-- Le master recoit les thresholds des clients")
         print(thresholds)
         print("**************************************************************************************")
-        
 
         thresholds = self.get_thresholds(features, thresholds)
-        
+
         print("--> Le master envoie les thresholds selectionnes aux clients")
-        print( thresholds )
-        
+        print(thresholds)
+
         best_threshold = self.server_manager.get({"features": features.tolist(), "thresholds": thresholds.tolist(),
-                "current_tree": current_root.serialize()},'best-threshold')
-        
+                                                  "current_tree": current_root.serialize()}, 'best-threshold')
+
         print("<-- Le master recoit les meilleurs features et le nombre de donnees actuels des clients")
-        print( best_threshold )
+        print(best_threshold)
         print("**************************************************************************************")
         # Vote majoritaire pour avoir la meilleure separation
         votes = dict.fromkeys(features, 0)
@@ -111,11 +111,11 @@ class FederatedRandomForest():
         if votes[best_feature] == 0:
             current_node.value = self.get_label(current_root)
             return current_node.value
-        
+
         # Ajouter le meilleur feature et separation a "current_tree"
         current_node.feature = best_feature
         current_node.threshold = thresholds[np.where(features == best_feature)][0]
-        
+
         # Construit l'arbre de gauche
         lNode = Node()
         current_node.lNode = lNode
@@ -134,12 +134,17 @@ class FederatedRandomForest():
 
         return current_root
 
-    def train(self, n=100,depth=3):
+    def train(self, n=100, depth=3):
         """ Entraine le modele en construisant un arbre de facon distribuee puis en
             l'ajoutant au Random Forest
+
+            :param n: Nombre d'arbres
+            :type n: int
+            :param depth: Profondeur maximale de l'arbre
+            :type depth: int
         """
         self.get_clients_features()
-        
+
         for t in range(n):
             current_tree = Node()
             self.build_tree(current_tree, current_tree, depth=depth)
@@ -148,10 +153,12 @@ class FederatedRandomForest():
             self.forest.add(current_tree)
 
         # Envoyer la foret aux clients
-        json_forest = self.forest.serialize() 
-        
-        self.server_manager.post([{'forest':json_forest}]*len(self.server_manager.clients), 'random-forest')
+        json_forest = self.forest.serialize()
+
+        self.server_manager.post([{'forest': json_forest}] * len(self.server_manager.clients), 'random-forest')
 
     def get_clients_features(self):
+        """
+        Récupère les features des clients
+        """
         self.features = self.server_manager.get({}, 'features')[0]
-
