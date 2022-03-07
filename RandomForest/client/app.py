@@ -53,16 +53,16 @@ def set_new_forest():
 
 @app.route('/local-accuracy')
 def get_local_accuracy():
-    accuracy = c.get_local_accuracy()
+    accuracy, n  = c.get_local_accuracy()
 
-    return jsonify(accuracy)
+    return jsonify({"accuracy": accuracy, "n": n})
 
 
 @app.route('/federated-accuracy')
 def get_federated_accuracy():
-    error, n = c.get_federated_accuracy()
+    accuracy, n = c.get_federated_accuracy()
 
-    return jsonify({"error": error, "n": n})
+    return jsonify({"accuracy": accuracy, "n": n})
 
 
 @app.route('/dataset', methods=['POST'])

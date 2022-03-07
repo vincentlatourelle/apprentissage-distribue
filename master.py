@@ -1,5 +1,5 @@
 from sklearn.ensemble import RandomForestClassifier
-from RandomForest.master.federatedRandomForest import FederatedRandomForest
+from RandomForest.master.FederatedRandomForest import FederatedRandomForest
 import numpy as np
 
 
@@ -24,12 +24,22 @@ class Master:
         if type == "rf" and distribution == "federated":
             response = self.server_manager.get({}, 'federated-accuracy')
             n = [x['n'] for x in response]
-            err = [x['error'] for x in response]
-            return 1 - sum([n[x] * err[x] for x in range(len(n))]) / sum(n)
+            acc = [x['accuracy'] for x in response]
+            return {'accuracy': sum([n[x] * acc[x] for x in range(len(n))]) / sum(n),
+                    'min': min(acc),
+                    'max': max(acc),
+                    'var': np.var(acc)}
 
         elif type == "rf" and distribution == "localised":
-            return 1 - np.mean(self.server_manager.get({}, 'local-accuracy'))
+            response = self.server_manager.get({}, 'local-accuracy')
+            n = [x['n'] for x in response]
+            acc = [x['accuracy'] for x in response]
+            
+            return {'accuracy': sum([n[x] * acc[x] for x in range(len(n))]) / sum(n),
+                    'min': min(acc), 
+                    'max': max(acc), 
+                    'var': np.var(acc)}
 
         elif type == "rf" and distribution == "centralised":
             res = self.rf.predict(test_dataset)
-            return 1 - sum([int(value != test_labels[x]) for x, value in enumerate(res)]) / len(test_labels)
+            return {'accuracy': 1 - sum([int(value != test_labels[x]) for x, value in enumerate(res)]) / len(test_labels)}
