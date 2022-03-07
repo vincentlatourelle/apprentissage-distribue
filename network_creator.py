@@ -19,27 +19,36 @@ class NetworkCreator:
         n_clients = len(server_manager.clients)
 
         if repartition and n_clients == 2:
-            idx = np.random.choice(len(self.dataset) - 1, replace=False, size=int(len(self.dataset) * repartition))
-            train_dataset1 = self.dataset.loc[idx]
-            train_labels1 = self.labels.loc[idx]
-            train_dataset2 = self.dataset.loc[~self.dataset.index.isin(idx)]
-            train_labels2 = self.labels.loc[~self.labels.index.isin(idx)]
-
+            train_dataset = self.dataset.copy()
+            train_dataset['target'] = self.labels
+            
+            
+            train_dataset1 = train_dataset.groupby('target', group_keys=False).apply(lambda x: x.sample(frac=repartition))
+            train_dataset2 = train_dataset.loc[~train_dataset.index.isin(train_dataset1.index)]
+            
+            train_labels1 = train_dataset1['target']
+            train_labels2 = train_dataset2['target']
+            train_dataset1 = train_dataset1.drop(['target'], axis=1)
+            train_dataset2 = train_dataset2.drop(['target'], axis=1)
+            
             server_manager.post([{'dataset': train_dataset1.to_dict(), 'labels': train_labels1.to_dict()},
                                  {'dataset': train_dataset2.to_dict(), 'labels': train_labels2.to_dict()}], 'dataset')
 
         else:
-            # Separe les donnees equitablement entre les n_clients
-            # La separation se fait en ordre (les x premieres donnees vont
-            # au premier clients, les x prochaines au deuxieme, etc.)
-            step = int(len(self.labels) / n_clients)
-            stop = len(self.labels)
-
-            train_datasets = np.split(
-                self.dataset, [x for x in range(step, stop, step)])
-            train_labels = np.split(
-                self.labels, [x for x in range(step, stop, step)])
-
+            train_datasets = []
+            train_labels = []
+            
+            train_dataset = self.dataset.copy()
+            train_dataset['target'] = self.labels
+            
+            for i in range(n_clients):
+                train_dataset1 = train_dataset.groupby('target', group_keys=False).apply(lambda x: x.sample(frac=1/(n_clients - i)))
+                
+                train_labels.append(train_dataset1['target'])
+                train_datasets.append(train_dataset1.drop(['target'], axis=1))
+                
+                train_dataset = train_dataset.loc[~train_dataset.index.isin(train_dataset1.index)]
+            
             server_manager.post([{'dataset': train_datasets[i].to_dict(), 'labels': train_labels[i].to_dict()} for i in
                                  range(n_clients)], 'dataset')
 
@@ -90,7 +99,7 @@ def main():
     
     print(master.test(type="rf",network=None,distribution="centralised",test_dataset=test_dataset,test_labels=test_labels.values))
     
-    master.train(type="rf",network=None,distribution="federated",n=10,depth=3)
+    master.train(type="rf",network=None,distribution="federated",n=10,depth=15)
     
     print("Centralise")
     print(master.test(type="rf", network=None, distribution="centralised", test_dataset=test_dataset,

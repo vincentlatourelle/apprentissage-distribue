@@ -59,7 +59,7 @@ class Client:
         best_gini_feature = features[i_best_gini]
         n_data = len(labels)
         
-        if ginis[i_best_gini] == 0:
+        if ginis[i_best_gini] <= 0:
             return "no-gain", 0
 
         return best_gini_feature, n_data
