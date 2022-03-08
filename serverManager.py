@@ -28,7 +28,7 @@ class ServerManager():
         """
         r = self.pool.starmap(inner_get, zip([f'{x}/{uri}' for x in self.clients], [data] * len(self.clients)))
 
-        return np.array(r)
+        return np.array(r,dtype=object)
 
     def post(self, data, uri):
         """Effectue un HTTP POST pour chaque client et retourne leurs reponses

@@ -89,27 +89,67 @@ def main():
     network_creator = NetworkCreator(df, labels)
 
     server_manager = ServerManager(['http://localhost:50{}'.format(str(x).zfill(2)) for x in range(1, n_clients + 1)])
-    network_creator.split_dataset(server_manager, repartition)
+    # network_creator.split_dataset(server_manager, repartition)
 
     # A valider
     # centralise
-    master = Master(server_manager)
-    dataset,labels,test_dataset,test_labels = split(df,labels)
-    master.train(type="rf",network=None,distribution="centralised",n=100,depth=300,dataset=dataset,labels=labels)
-    
-    print(master.test(type="rf",network=None,distribution="centralised",test_dataset=test_dataset,test_labels=test_labels.values))
-    
-    master.train(type="rf",network=None,distribution="federated",n=10,depth=15)
-    
-    print("Centralise")
-    print(master.test(type="rf", network=None, distribution="centralised", test_dataset=test_dataset,
-                      test_labels=test_labels.values))
+    centralise = []
+    federated = []
+    localised = []
+    for k in range(0,10):
+        network_creator.split_dataset(server_manager, repartition)
+        
+        master = Master(server_manager)
+        dataset,n_labels,test_dataset,test_labels = split(df,labels)
+        master.train(type="rf",network=None,distribution="centralised",n=100,depth=300,dataset=dataset,labels=n_labels)
+        
+        print(master.test(type="rf",network=None,distribution="centralised",test_dataset=test_dataset,test_labels=test_labels.values))
+        
+        master.train(type="rf",network=None,distribution="federated",n=10,depth=15)
+        
+        print("Centralise")
+        res_centralise = master.test(type="rf", network=None, distribution="centralised", test_dataset=test_dataset,
+                        test_labels=test_labels.values)
+        print(res_centralise)
+        centralise.append(res_centralise['accuracy'])
 
-    print("localise")
-    print(master.test(type="rf", network=None, distribution="localised"))
+        print("localise")
+        res_local = master.test(type="rf", network=None, distribution="localised")
+        print(res_local)
+        localised.append(res_local)
 
-    print("federe")
-    print(master.test(type="rf", network=None, distribution="federated"))
+        print("federe")
+        res_feder = master.test(type="rf", network=None, distribution="federated")
+        print(res_feder)
+        federated.append(res_feder)
+        
+    print_results(centralise, federated, localised)
+
+def print_results(centralise, federated, localised):
+    print("Accuracy:")
+    print(f'Centralise: {np.mean(centralise)}')
+    acc_local = np.mean([config['accuracy'] for config in localised])
+    print(f'Locale: {acc_local}')
+    acc_feder = np.mean([config['accuracy'] for config in federated])
+    print(f'federe: {acc_feder}')
+    
+    print("Min:")
+    stat_local = np.mean([config['min'] for config in localised])
+    print(f'Locale: {stat_local}')
+    stat_feder = np.mean([config['min'] for config in federated])
+    print(f'federe: {stat_feder}')
+    
+    print("Max:")
+    stat_local = np.mean([config['max'] for config in localised])
+    print(f'Locale: {stat_local}')
+    stat_feder = np.mean([config['max'] for config in federated])
+    print(f'federe: {stat_feder}')
+    
+    print("Variance:")
+    stat_local = np.mean([config['var'] for config in localised])
+    print(f'Locale: {stat_local}')
+    stat_feder = np.mean([config['var'] for config in federated])
+    print(f'federe: {stat_feder}')
 
 
 if __name__ == '__main__':

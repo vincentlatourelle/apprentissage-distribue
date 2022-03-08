@@ -25,10 +25,10 @@ def get_best_threshold():
     current_tree = Node.deserialize(request.get_json()['current_tree'])
 
     feature, n_data = c.get_best_threshold(features, threshold, current_tree)
-    print(
-        "Le client recoit l'arbre actuel et threshold choisis par le master et retourne le meilleur feature et son "
-        "nombre de donnes",
-        file=sys.stderr)
+    # print(
+    #     "Le client recoit l'arbre actuel et threshold choisis par le master et retourne le meilleur feature et son "
+    #     "nombre de donnes",
+    #     file=sys.stderr)
     return jsonify({"feature": feature, "n_data": n_data})
 
 
@@ -37,7 +37,7 @@ def get_leaf():
     current_tree = Node.deserialize(request.get_json()['current_tree'])
     labels = c.get_leaf(current_tree)
 
-    print("Le client recoit l'arbre actuel et renvoit les labels associes au noeud actuel", file=sys.stderr)
+    # print("Le client recoit l'arbre actuel et renvoit les labels associes au noeud actuel", file=sys.stderr)
 
     return jsonify(labels.tolist())
 
@@ -84,7 +84,7 @@ def get_thresholds():
     current_tree = Node.deserialize(request.get_json()['current_tree'])
     features = request.get_json()['features']
 
-    print("Le client recoit les features et l'arbre actuel et renvoit une valeur pour chaque feature", file=sys.stderr)
+    # print("Le client recoit les features et l'arbre actuel et renvoit une valeur pour chaque feature", file=sys.stderr)
 
     values = c.get_thresholds(features, current_tree)
 
