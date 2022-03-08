@@ -96,7 +96,7 @@ def main():
     centralise = []
     federated = []
     localised = []
-    for k in range(0,10):
+    for k in range(0,1):
         network_creator.split_dataset(server_manager, repartition)
         
         master = Master(server_manager)

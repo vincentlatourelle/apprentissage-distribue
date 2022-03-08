@@ -1,10 +1,12 @@
+import pickle
+import io
 import os
 import sys
 
 import numpy as np
 import pandas as pd
 from client import Client
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_file
 
 currentdir = os.path.dirname(os.path.realpath(__file__))
 rootdir = os.path.join(currentdir, "../../")
@@ -97,6 +99,18 @@ def get_features():
 
     return jsonify(features)
 
+@app.route('/local-model')
+def get_local_model():
+    model = c.get_local_model()
+    bytes_io = io.BytesIO()
+    pickle.dump(model, bytes_io)
+    bytes_io.seek(0)  
+      
+    return send_file(
+        bytes_io,
+        attachment_filename='model',
+        mimetype='application/octet-stream'
+    )
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", debug=True)

@@ -8,13 +8,15 @@ class Master:
         self.server_manager = server_manager
         self.frf = FederatedRandomForest(server_manager)
         self.rf = None
+        self.local_rf = None
 
     def train(self, type, network, distribution, **kwargs):
         if type == "rf" and distribution == "federated":
             self.frf.train(kwargs['n'], kwargs['depth'])
 
         if type == "rf" and distribution == "localised":
-            pass
+            self.local_rf = self.server_manager.get_models({},'local-model')
+            
 
         elif type == "rf" and distribution == "centralised":
             self.rf = RandomForestClassifier(n_estimators=kwargs['n'], max_depth=kwargs['depth'])

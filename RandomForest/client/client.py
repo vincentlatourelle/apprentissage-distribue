@@ -111,6 +111,11 @@ class Client:
         res = dt.predict(self.test_dataset)
         accuracy = 1 - sum([int(value != self.test_labels[x]) for x, value in enumerate(res)]) / len(self.test_labels)
         return accuracy, len(self.test_dataset)
+    
+    def get_local_model(self):
+        dt = RandomForestClassifier()
+        dt.fit(self.dataset.values, self.labels)
+        return dt
 
     def get_thresholds(self, features, current_tree):
         """ Pour chaque features, recupere le min et le max, puis definit le threshold qui
