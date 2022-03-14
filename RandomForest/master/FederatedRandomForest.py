@@ -54,9 +54,9 @@ class FederatedRandomForest:
         data = {"current_tree": current_tree.serialize()}
         labels = np.concatenate(self.server_manager.get(data, 'leaf').tolist(), axis=0)
 
-        print("<-- Le master recoit les labels des clients")
-        print(labels)
-        print("**************************************************************************************")
+        # print("<-- Le master recoit les labels des clients")
+        # print(labels)
+        # print("**************************************************************************************")
 
         result, count = np.unique(labels, return_counts=True)
         if len(result) == 0:
@@ -75,27 +75,27 @@ class FederatedRandomForest:
 
         features = self.select_features()
 
-        print("--> Le master envoie les features aux clients")
-        print(features)
+        # print("--> Le master envoie les features aux clients")
+        # print(features)
         
         
         thresholds = self.server_manager.get({"features": features.tolist(), "current_tree": current_root.serialize()},'thresholds')
 
-        print("<-- Le master recoit les thresholds des clients")
-        print(thresholds)
-        print("**************************************************************************************")
+        # print("<-- Le master recoit les thresholds des clients")
+        # print(thresholds)
+        # print("**************************************************************************************")
 
         thresholds = self.get_thresholds(features, thresholds)
 
-        print("--> Le master envoie les thresholds selectionnes aux clients")
-        print(thresholds)
+        # print("--> Le master envoie les thresholds selectionnes aux clients")
+        # print(thresholds)
 
         best_threshold = self.server_manager.get({"features": features.tolist(), "thresholds": thresholds.tolist(),
                                                   "current_tree": current_root.serialize()}, 'best-threshold')
 
-        print("<-- Le master recoit les meilleurs features et le nombre de donnees actuels des clients")
-        print(best_threshold)
-        print("**************************************************************************************")
+        # print("<-- Le master recoit les meilleurs features et le nombre de donnees actuels des clients")
+        # print(best_threshold)
+        # print("**************************************************************************************")
         # Vote majoritaire pour avoir la meilleure separation
         votes = dict.fromkeys(features, 0)
         votes['pure'] = 0

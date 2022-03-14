@@ -1,10 +1,12 @@
+import io
+import pickle
 import requests
 from multiprocessing import Pool
 import numpy as np
 
 
 def inner_get(url, data):
-    return requests.get(url, json=data, headers={"Content-Type": "application/json; charset=utf-8"}).json()
+    return requests.get(url, json=data, headers={"Content-Type": "application/json; charset=utf-8"})
 
 
 def inner_post(url, data):
@@ -27,8 +29,8 @@ class ServerManager():
         :rtype: list
         """
         r = self.pool.starmap(inner_get, zip([f'{x}/{uri}' for x in self.clients], [data] * len(self.clients)))
-
-        return np.array(r)
+        json = [resp.json() for resp in r]
+        return np.array(json,dtype=object)
 
     def post(self, data, uri):
         """Effectue un HTTP POST pour chaque client et retourne leurs reponses
@@ -42,6 +44,12 @@ class ServerManager():
         """
         r = self.pool.starmap(inner_post, zip([f'{x}/{uri}' for x in self.clients], data))
         return r
+    
+    def get_models(self,data,uri):
+        r = self.pool.starmap(inner_get, zip([f'{x}/{uri}' for x in self.clients], [data] * len(self.clients)))
+        models = [pickle.load(io.BytesIO(resp.content)) for resp in r]
+        return np.array(models,dtype=object)
+        
 
     def __del__(self):
         self.pool.close()
