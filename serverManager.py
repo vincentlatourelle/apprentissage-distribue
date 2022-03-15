@@ -47,7 +47,7 @@ class ServerManager():
         r = self.pool.starmap(inner_post, zip([f'{x}/{uri}' for x in self.clients], data))
         return r
     
-    def post_model(self, uri, file):
+    def post_model(self, uri, model):
         """Effectue un HTTP POST pour chaque client et retourne leurs reponses
 
         :param data: Json a envoyer au client
@@ -57,6 +57,11 @@ class ServerManager():
         :return: Reponse des clients
         :rtype: list
         """
+        
+        bytes_io = io.BytesIO()
+        dump(model, bytes_io)
+        bytes_io.seek(0)
+        file = {'file': ('file', bytes_io)}
         
         r = self.pool.starmap(inner_post_file, zip([f'{x}/{uri}' for x in self.clients], [file] * len(self.clients)))
         return r

@@ -53,7 +53,7 @@ class FederatedRandomForest:
 
     def get_label(self, current_tree):
         data = {"current_tree": current_tree.serialize()}
-        labels = np.concatenate(self.server_manager.get(data, 'leaf').tolist(), axis=0)
+        labels = np.concatenate(self.server_manager.get(data, 'rf/leaf').tolist(), axis=0)
 
         # print("<-- Le master recoit les labels des clients")
         # print(labels)
@@ -66,7 +66,7 @@ class FederatedRandomForest:
     
     def get_label_vote(self, current_tree):
         data = {"current_tree": current_tree.serialize()}
-        labels = self.server_manager.get(data, 'leaf-vote')
+        labels = self.server_manager.get(data, 'rf/leaf-vote')
 
         # print("<-- Le master recoit les labels des clients")
         # print(labels)
@@ -94,7 +94,7 @@ class FederatedRandomForest:
         # print(features)
         
         
-        thresholds = self.server_manager.get({"features": features.tolist(), "current_tree": current_root.serialize()},'thresholds')
+        thresholds = self.server_manager.get({"features": features.tolist(), "current_tree": current_root.serialize()},'rf/thresholds')
 
         # print("<-- Le master recoit les thresholds des clients")
         # print(thresholds)
@@ -106,7 +106,7 @@ class FederatedRandomForest:
         # print(thresholds)
 
         best_threshold = self.server_manager.get({"features": features.tolist(), "thresholds": thresholds.tolist(),
-                                                  "current_tree": current_root.serialize()}, 'best-threshold')
+                                                  "current_tree": current_root.serialize()}, 'rf/best-threshold')
 
         # print("<-- Le master recoit les meilleurs features et le nombre de donnees actuels des clients")
         # print(best_threshold)
@@ -174,10 +174,10 @@ class FederatedRandomForest:
         # Envoyer la foret aux clients
         json_forest = self.forest.serialize()
         
-        self.server_manager.post([{'forest': json_forest}] * len(self.server_manager.clients), 'random-forest')
+        self.server_manager.post([{'forest': json_forest}] * len(self.server_manager.clients), 'rf/random-forest')
 
     def get_clients_features(self):
         """
         Récupère les features des clients
         """
-        self.features = self.server_manager.get({}, 'features')[0]
+        self.features = self.server_manager.get({}, 'rf/features')[0]
