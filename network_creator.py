@@ -52,8 +52,7 @@ class NetworkCreator:
                 train_dataset = train_dataset.loc[~train_dataset.index.isin(
                     train_dataset1.index)]
 
-            server_manager.post([{'dataset': train_datasets[i].to_dict(), 'labels': train_labels[i].to_dict()} for i in
-                                 range(n_clients)], 'dataset')
+            server_manager.post([{'dataset': train_datasets[i].to_dict(), 'labels': train_labels[i].to_dict()} for i in range(n_clients)], 'dataset')
 
 
 def split(dataset, labels):
@@ -122,16 +121,20 @@ def run_test(n_clients, repartition, df, labels, network_creator, df_results = N
     
     start_time = time.time()
     
-    for k in range(0, 10):
+    for k in range(10):
         network_creator.split_dataset(server_manager, repartition)
 
         master = Master(server_manager)
+        master.train(type="rf", network=None,
+                      distribution="localised")
+        
+        print("Entrainement local")
+        print(master.test(type="local-rf", network=None,
+                                 distribution="federated"))
+        
         dataset, n_labels, test_dataset, test_labels = split(df, labels)
         master.train(type="rf", network=None, distribution="centralised",
                      n=100, depth=300, dataset=dataset, labels=n_labels)
-
-        print(master.test(type="rf", network=None, distribution="centralised",
-              test_dataset=test_dataset, test_labels=test_labels.values))
 
         master.train(type="rf", network=None,
                      distribution="federated", n=10, depth=15)
@@ -150,9 +153,12 @@ def run_test(n_clients, repartition, df, labels, network_creator, df_results = N
 
         print("federe")
         res_feder = master.test(type="rf", network=None,
-                                distribution="federated")
+                                 distribution="federated")
         print(res_feder)
         federated.append(res_feder)
+        
+        print("####################################")
+        
         
     if not df_results is None:    
         df_results = add_result_to_df(df_results,centralise,federated,localised,n_clients,repartition, time.time() - start_time)

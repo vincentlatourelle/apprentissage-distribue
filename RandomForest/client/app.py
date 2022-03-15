@@ -1,4 +1,4 @@
-import pickle
+from joblib import dump, load
 import io
 import os
 import sys
@@ -43,12 +43,26 @@ def get_leaf():
 
     return jsonify(labels.tolist())
 
+@app.route('/leaf-vote')
+def get_leaf_vote():
+    current_tree = Node.deserialize(request.get_json()['current_tree'])
+    label, count  = c.get_leaf_vote(current_tree)
+
+    # print("Le client recoit l'arbre actuel et renvoit les labels associes au noeud actuel", file=sys.stderr)
+
+    return jsonify({"label":label, "count":count})
+
 
 @app.route('/random-forest', methods=['POST'])
 def set_new_forest():
-    random_forest = RandomForest()
-    random_forest.deserialize(request.get_json()["forest"])
-    c.set_new_forest(random_forest)
+    if request.get_json() is not None:
+        random_forest = RandomForest()
+        random_forest.deserialize(request.get_json()["forest"])
+        c.set_new_forest(random_forest)
+    else:
+        file = request.files['file']
+        model = load(io.BytesIO(file.read()))
+        c.set_new_forest(model)
 
     return "", 200
 
@@ -103,13 +117,13 @@ def get_features():
 def get_local_model():
     model = c.get_local_model()
     bytes_io = io.BytesIO()
-    pickle.dump(model, bytes_io)
+    dump(model, bytes_io)
     bytes_io.seek(0)  
+    
       
     return send_file(
         bytes_io,
         attachment_filename='model',
-        mimetype='application/octet-stream'
     )
 
 if __name__ == "__main__":

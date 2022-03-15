@@ -1,3 +1,4 @@
+from collections import defaultdict
 import numpy as np
 
 import os
@@ -62,6 +63,20 @@ class FederatedRandomForest:
         if len(result) == 0:
             return "resultat_invalid"
         return result[np.argmax(count)]
+    
+    def get_label_vote(self, current_tree):
+        data = {"current_tree": current_tree.serialize()}
+        labels = self.server_manager.get(data, 'leaf-vote')
+
+        # print("<-- Le master recoit les labels des clients")
+        # print(labels)
+        # print("**************************************************************************************")
+        votes = defaultdict(int)
+        for v in labels:
+            votes[v["label"]] += v["count"]
+            
+        label = max(votes, key=votes.get)
+        return label
 
     def build_tree(self, current_node, current_root, depth=15):
         """Construit un arbre de facon distribuee
@@ -70,7 +85,7 @@ class FederatedRandomForest:
         :type current_tree: Node
         """
         if depth == 0:
-            current_node.value = self.get_label(current_root)
+            current_node.value = self.get_label_vote(current_root)
             return current_node.value
 
         features = self.select_features()
@@ -109,7 +124,7 @@ class FederatedRandomForest:
 
         # Si personne ne vote
         if votes[best_feature] == 0:
-            current_node.value = self.get_label(current_root)
+            current_node.value = self.get_label_vote(current_root)
             return current_node.value
 
         # Ajouter le meilleur feature et separation a "current_tree"
@@ -152,9 +167,13 @@ class FederatedRandomForest:
             # Ajouter current_tree a la foret
             self.forest.add(current_tree)
 
+        
+        self.send_forest()
+        
+    def send_forest(self):
         # Envoyer la foret aux clients
         json_forest = self.forest.serialize()
-
+        
         self.server_manager.post([{'forest': json_forest}] * len(self.server_manager.clients), 'random-forest')
 
     def get_clients_features(self):
