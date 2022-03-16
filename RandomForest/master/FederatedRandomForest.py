@@ -1,3 +1,4 @@
+from collections import defaultdict
 import numpy as np
 
 import os
@@ -52,7 +53,7 @@ class FederatedRandomForest:
 
     def get_label(self, current_tree):
         data = {"current_tree": current_tree.serialize()}
-        labels = np.concatenate(self.server_manager.get(data, 'leaf').tolist(), axis=0)
+        labels = np.concatenate(self.server_manager.get(data, 'rf/leaf').tolist(), axis=0)
 
         # print("<-- Le master recoit les labels des clients")
         # print(labels)
@@ -62,6 +63,20 @@ class FederatedRandomForest:
         if len(result) == 0:
             return "resultat_invalid"
         return result[np.argmax(count)]
+    
+    def get_label_vote(self, current_tree):
+        data = {"current_tree": current_tree.serialize()}
+        labels = self.server_manager.get(data, 'rf/leaf-vote')
+
+        # print("<-- Le master recoit les labels des clients")
+        # print(labels)
+        # print("**************************************************************************************")
+        votes = defaultdict(int)
+        for v in labels:
+            votes[v["label"]] += v["count"]
+            
+        label = max(votes, key=votes.get)
+        return label
 
     def build_tree(self, current_node, current_root, depth=15):
         """Construit un arbre de facon distribuee
@@ -70,7 +85,7 @@ class FederatedRandomForest:
         :type current_tree: Node
         """
         if depth == 0:
-            current_node.value = self.get_label(current_root)
+            current_node.value = self.get_label_vote(current_root)
             return current_node.value
 
         features = self.select_features()
@@ -79,7 +94,7 @@ class FederatedRandomForest:
         # print(features)
         
         
-        thresholds = self.server_manager.get({"features": features.tolist(), "current_tree": current_root.serialize()},'thresholds')
+        thresholds = self.server_manager.get({"features": features.tolist(), "current_tree": current_root.serialize()},'rf/thresholds')
 
         # print("<-- Le master recoit les thresholds des clients")
         # print(thresholds)
@@ -90,8 +105,7 @@ class FederatedRandomForest:
         # print("--> Le master envoie les thresholds selectionnes aux clients")
         # print(thresholds)
 
-        best_threshold = self.server_manager.get({"features": features.tolist(), "thresholds": thresholds.tolist(),
-                                                  "current_tree": current_root.serialize()}, 'best-threshold')
+        best_threshold = self.server_manager.get({"features": features.tolist(), "thresholds": thresholds.tolist(), "current_tree": current_root.serialize()}, 'rf/best-threshold')
 
         # print("<-- Le master recoit les meilleurs features et le nombre de donnees actuels des clients")
         # print(best_threshold)
@@ -109,7 +123,7 @@ class FederatedRandomForest:
 
         # Si personne ne vote
         if votes[best_feature] == 0:
-            current_node.value = self.get_label(current_root)
+            current_node.value = self.get_label_vote(current_root)
             return current_node.value
 
         # Ajouter le meilleur feature et separation a "current_tree"
@@ -152,13 +166,17 @@ class FederatedRandomForest:
             # Ajouter current_tree a la foret
             self.forest.add(current_tree)
 
+        
+        self.send_forest()
+        
+    def send_forest(self):
         # Envoyer la foret aux clients
         json_forest = self.forest.serialize()
-
-        self.server_manager.post([{'forest': json_forest}] * len(self.server_manager.clients), 'random-forest')
+        
+        self.server_manager.post([{'forest': json_forest}] * len(self.server_manager.clients), 'rf/random-forest')
 
     def get_clients_features(self):
         """
         Récupère les features des clients
         """
-        self.features = self.server_manager.get({}, 'features')[0]
+        self.features = self.server_manager.get({}, 'rf/features')[0]

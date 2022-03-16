@@ -52,8 +52,7 @@ class NetworkCreator:
                 train_dataset = train_dataset.loc[~train_dataset.index.isin(
                     train_dataset1.index)]
 
-            server_manager.post([{'dataset': train_datasets[i].to_dict(), 'labels': train_labels[i].to_dict()} for i in
-                                 range(n_clients)], 'dataset')
+            server_manager.post([{'dataset': train_datasets[i].to_dict(), 'labels': train_labels[i].to_dict()} for i in range(n_clients)], 'dataset')
 
 
 def split(dataset, labels):
@@ -67,24 +66,7 @@ def split(dataset, labels):
     dataset = dataset.loc[train_idx]
     labels = labels.loc[train_idx]
 
-    return dataset, labels, test_dataset, test_labels
-
-def run_all_tests(df,labels, network_creator):
-    df_results = pd.DataFrame(columns=["n_clients", "repartition", "federated_accuracy", "federated_min", "federated_max",
-                           "federated_var", "local_accuracy", "local_min", "local_max", "local_var", "execution_time"])
-    
-    n_clients = [2,4,6,8,10]
-    repartitions = [0.9,0.8,0.7,0.8,0.5]
-    
-    for repartition in repartitions:
-        df_results = run_test(2, repartition, df, labels, network_creator, df_results)
-        
-    for n in n_clients:
-        df_results = run_test(n, 0.5, df, labels, network_creator, df_results)
-        
-    df_results.to_csv('./res.csv', float_format='%f')
-    
-    
+    return dataset, labels, test_dataset, test_labels 
 
 def main():
     if len(sys.argv) < 5:
@@ -122,44 +104,65 @@ def run_test(n_clients, repartition, df, labels, network_creator, df_results = N
     
     start_time = time.time()
     
-    for k in range(0, 10):
+    for k in range(10):
         network_creator.split_dataset(server_manager, repartition)
 
         master = Master(server_manager)
+        master.train(type="rf",
+                      distribution="localised")
+        
+        print("Entrainement local")
+        print(master.test(type="rf",
+                                 distribution="local-federated"))
+        
         dataset, n_labels, test_dataset, test_labels = split(df, labels)
-        master.train(type="rf", network=None, distribution="centralised",
+        master.train(type="rf", distribution="centralised",
                      n=100, depth=300, dataset=dataset, labels=n_labels)
 
-        print(master.test(type="rf", network=None, distribution="centralised",
-              test_dataset=test_dataset, test_labels=test_labels.values))
-
-        master.train(type="rf", network=None,
+        master.train(type="rf",
                      distribution="federated", n=10, depth=15)
 
         print("Centralise")
-        res_centralise = master.test(type="rf", network=None, distribution="centralised", test_dataset=test_dataset,
+        res_centralise = master.test(type="rf", distribution="centralised", test_dataset=test_dataset,
                                      test_labels=test_labels.values)
         print(res_centralise)
         centralise.append(res_centralise['accuracy'])
 
         print("localise")
-        res_local = master.test(type="rf", network=None,
+        res_local = master.test(type="rf",
                                 distribution="localised")
         print(res_local)
         localised.append(res_local)
 
         print("federe")
-        res_feder = master.test(type="rf", network=None,
-                                distribution="federated")
+        res_feder = master.test(type="rf",
+                                 distribution="federated")
         print(res_feder)
         federated.append(res_feder)
         
+        print("####################################")
+        
+        
     if not df_results is None:    
         df_results = add_result_to_df(df_results,centralise,federated,localised,n_clients,repartition, time.time() - start_time)
-    print_results(centralise, federated, localised)
+    print_results(centralise, federated, localised, time.time() - start_time)
     
     return df_results
 
+def run_all_tests(df,labels, network_creator):
+    df_results = pd.DataFrame(columns=["n_clients", "repartition", "federated_accuracy", "federated_min", "federated_max",
+                           "federated_var", "local_accuracy", "local_min", "local_max", "local_var", "execution_time"])
+    
+    n_clients = [2,4,6,8,10]
+    repartitions = [0.9,0.8,0.7,0.8,0.5]
+    
+    for repartition in repartitions:
+        df_results = run_test(2, repartition, df, labels, network_creator, df_results)
+        
+    for n in n_clients:
+        df_results = run_test(n, 0.5, df, labels, network_creator, df_results)
+        
+    df_results.to_csv('./res.csv', float_format='%f')
 
 def add_result_to_df(df,centralise,  federated, localised, n_client, repartition, t_execution):
     df2 = {
@@ -178,8 +181,7 @@ def add_result_to_df(df,centralise,  federated, localised, n_client, repartition
     }
     return df.append(df2, ignore_index=True)
 
-
-def print_results(centralise, federated, localised):
+def print_results(centralise, federated, localised, t_execution):
     print("Accuracy:")
     print(f'Centralise: {np.mean(centralise)}')
     acc_local = np.mean([config['accuracy'] for config in localised])
@@ -204,6 +206,8 @@ def print_results(centralise, federated, localised):
     print(f'Locale: {stat_local}')
     stat_feder = np.mean([config['var'] for config in federated])
     print(f'federe: {stat_feder}')
+    
+    print(f'Temps d\'execution (s): {t_execution}')
 
 
 if __name__ == '__main__':

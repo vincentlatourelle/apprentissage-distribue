@@ -22,9 +22,12 @@ class RandomForest:
         :return: label
         :rtype: str
         """
-        result = [tree.predict(x) for tree in self.forest]
-        result, count = np.unique(result, return_counts=True)
-        return result[np.argmax(count)]
+        f_result = []
+        for index, x_i in x.iterrows():
+            result = [tree.predict(x_i) for tree in self.forest]
+            result, count = np.unique(result, return_counts=True)
+            f_result.append(result[np.argmax(count)])
+        return f_result
     
     def serialize(self):
         """

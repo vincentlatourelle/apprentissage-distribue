@@ -10,6 +10,9 @@ class Client:
         self.labels = None
         self.test_dataset = None
         self.test_labels = None
+        
+        self.current_dataset = None
+        self.current_labels = None
 
     def __bootstrap(self, x):
         """ Effectue un bootstap sur le dataset x
@@ -33,10 +36,8 @@ class Client:
         :type current_tree: Node
         """
         # Separer les donnees en fonctions de l'arbre courant 
-        labels = self.labels.copy()
-        dataset = self.dataset.copy()
-        if current_tree is not None:
-            dataset, labels = current_tree.get_current_node_data(dataset, labels)
+        labels = self.current_labels
+        dataset = self.current_dataset
 
         # Calcul du gini de l'ensemble actuel
         total_gini = Client.gini_impurity(labels)
@@ -79,6 +80,27 @@ class Client:
 
         # retourner le nombre de valeurs perturbees pour chaque classe dans le dataset courant
         return labels
+    
+    def get_leaf_vote(self, current_tree):
+        """Obtient la distribution des classes pour un dataset 
+           (possiblement juste la classe majoritaire si on decide d'utiliser un vote)
+
+        :param current_tree: arbre actuellement evalue
+        :type current_tree: Node
+        """
+        # Separer les donnees en fonctions de l'arbre courant 
+        labels = self.labels.copy()
+        dataset = self.dataset.copy()
+        if current_tree is not None:
+            dataset, labels = current_tree.get_current_node_data(dataset, labels)
+
+        # retourner le nombre de valeurs perturbees pour chaque classe dans le dataset courant
+        if len(labels)>0:
+            result, count = np.unique(labels, return_counts=True)
+            
+            return result[np.argmax(count)], len(self.labels)
+        
+        return "", 0
 
     def set_new_forest(self, random_forest):
         """Modifie la randomForest du client
@@ -94,7 +116,8 @@ class Client:
         :return: Precision federee
         :rtype: float
         """
-        res = [self.forest.predict(row) for index, row in self.test_dataset.iterrows()]
+        res = self.forest.predict(self.test_dataset)
+
         accuracy = 1 - sum([int(value != self.test_labels[x]) for x, value in enumerate(res)]) / len(self.test_labels)
 
         return accuracy, len(self.test_dataset)
@@ -107,14 +130,14 @@ class Client:
         """
         # Entrainer un modele de randomForest (scikit-learn) et retourner l'accuracy
         dt = RandomForestClassifier()
-        dt.fit(self.dataset.values, self.labels)
+        dt.fit(self.dataset, self.labels)
         res = dt.predict(self.test_dataset)
         accuracy = 1 - sum([int(value != self.test_labels[x]) for x, value in enumerate(res)]) / len(self.test_labels)
         return accuracy, len(self.test_dataset)
     
     def get_local_model(self):
         dt = RandomForestClassifier()
-        dt.fit(self.dataset.values, self.labels)
+        dt.fit(self.dataset, self.labels)
         return dt
 
     def get_thresholds(self, features, current_tree):
@@ -132,6 +155,9 @@ class Client:
         dataset = self.dataset.copy()
         if current_tree is not None:
             dataset, labels = current_tree.get_current_node_data(dataset, labels)
+            
+        self.current_dataset = dataset
+        self.current_labels = labels
             
         values = []
         for f in features:

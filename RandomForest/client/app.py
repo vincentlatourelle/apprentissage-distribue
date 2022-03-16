@@ -1,4 +1,4 @@
-import pickle
+from joblib import dump, load
 import io
 import os
 import sys
@@ -20,7 +20,7 @@ app = Flask(__name__)
 c = Client()
 
 
-@app.route('/best-threshold')
+@app.route('/rf/best-threshold')
 def get_best_threshold():
     features = request.get_json()['features']
     threshold = request.get_json()['thresholds']
@@ -34,7 +34,7 @@ def get_best_threshold():
     return jsonify({"feature": feature, "n_data": n_data})
 
 
-@app.route('/leaf')
+@app.route('/rf/leaf')
 def get_leaf():
     current_tree = Node.deserialize(request.get_json()['current_tree'])
     labels = c.get_leaf(current_tree)
@@ -43,24 +43,38 @@ def get_leaf():
 
     return jsonify(labels.tolist())
 
+@app.route('/rf/leaf-vote')
+def get_leaf_vote():
+    current_tree = Node.deserialize(request.get_json()['current_tree'])
+    label, count  = c.get_leaf_vote(current_tree)
 
-@app.route('/random-forest', methods=['POST'])
+    # print("Le client recoit l'arbre actuel et renvoit les labels associes au noeud actuel", file=sys.stderr)
+
+    return jsonify({"label":label, "count":count})
+
+
+@app.route('/rf/random-forest', methods=['POST'])
 def set_new_forest():
-    random_forest = RandomForest()
-    random_forest.deserialize(request.get_json()["forest"])
-    c.set_new_forest(random_forest)
+    if request.get_json() is not None:
+        random_forest = RandomForest()
+        random_forest.deserialize(request.get_json()["forest"])
+        c.set_new_forest(random_forest)
+    else:
+        file = request.files['file']
+        model = load(io.BytesIO(file.read()))
+        c.set_new_forest(model)
 
     return "", 200
 
 
-@app.route('/local-accuracy')
+@app.route('/rf/local-accuracy')
 def get_local_accuracy():
     accuracy, n  = c.get_local_accuracy()
 
     return jsonify({"accuracy": accuracy, "n": n})
 
 
-@app.route('/federated-accuracy')
+@app.route('/rf/federated-accuracy')
 def get_federated_accuracy():
     accuracy, n = c.get_federated_accuracy()
 
@@ -81,7 +95,7 @@ def set_dataset():
     return "", 200
 
 
-@app.route('/thresholds')
+@app.route('/rf/thresholds')
 def get_thresholds():
     current_tree = Node.deserialize(request.get_json()['current_tree'])
     features = request.get_json()['features']
@@ -93,23 +107,23 @@ def get_thresholds():
     return jsonify(values)
 
 
-@app.route('/features')
+@app.route('/rf/features')
 def get_features():
     features = c.get_features()
 
     return jsonify(features)
 
-@app.route('/local-model')
+@app.route('/rf/local-model')
 def get_local_model():
     model = c.get_local_model()
     bytes_io = io.BytesIO()
-    pickle.dump(model, bytes_io)
+    dump(model, bytes_io)
     bytes_io.seek(0)  
+    
       
     return send_file(
         bytes_io,
         attachment_filename='model',
-        mimetype='application/octet-stream'
     )
 
 if __name__ == "__main__":
