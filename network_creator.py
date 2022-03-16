@@ -108,12 +108,12 @@ def run_test(n_clients, repartition, df, labels, network_creator, df_results = N
         network_creator.split_dataset(server_manager, repartition)
 
         master = Master(server_manager)
-        # master.train(type="rf",
-        #               distribution="localised")
+        master.train(type="rf",
+                      distribution="localised")
         
-        # print("Entrainement local")
-        # print(master.test(type="rf",
-        #                          distribution="local-federated"))
+        print("Entrainement local")
+        print(master.test(type="rf",
+                                 distribution="local-federated"))
         
         dataset, n_labels, test_dataset, test_labels = split(df, labels)
         master.train(type="rf", distribution="centralised",

@@ -10,6 +10,9 @@ class Client:
         self.labels = None
         self.test_dataset = None
         self.test_labels = None
+        
+        self.current_dataset = None
+        self.current_labels = None
 
     def __bootstrap(self, x):
         """ Effectue un bootstap sur le dataset x
@@ -33,10 +36,8 @@ class Client:
         :type current_tree: Node
         """
         # Separer les donnees en fonctions de l'arbre courant 
-        labels = self.labels.copy()
-        dataset = self.dataset.copy()
-        if current_tree is not None:
-            dataset, labels = current_tree.get_current_node_data(dataset, labels)
+        labels = self.current_labels
+        dataset = self.current_dataset
 
         # Calcul du gini de l'ensemble actuel
         total_gini = Client.gini_impurity(labels)
@@ -154,6 +155,9 @@ class Client:
         dataset = self.dataset.copy()
         if current_tree is not None:
             dataset, labels = current_tree.get_current_node_data(dataset, labels)
+            
+        self.current_dataset = dataset
+        self.current_labels = labels
             
         values = []
         for f in features:

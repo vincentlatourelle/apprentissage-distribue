@@ -12,9 +12,30 @@ class Master:
         self.rf = None
         self.local_rf = None
 
+    def k_fold_cross_validation(self,k,type,distribution, **kwargs):
+        if type == "rf" and distribution == "federated":
+            list_n = kwargs['n']
+            list_depth = kwargs['depth']
+            for n in list_n:
+                for depth in list_depth:
+                    for i in range(k):
+                        ## Il faut tester et entrainer avec un ensemble de validation
+                        # self.frf.train(n, depth)
+                        pass
+                        
+                        
+
     def train(self, type, distribution, **kwargs):
         if type == "rf" and distribution == "federated":
-            self.frf.train(kwargs['n'], kwargs['depth'])
+            n = kwargs['n']
+            depth = kwargs['depth']
+            if isinstance(n, list) or isinstance(depth, list):
+                if not isinstance(n,list): n=[n] 
+                if not isinstance(depth,list): depth=[depth] 
+                
+                n, depth = self.k_fold_cross_validation(k=10,type=type,distribution=distribution,n=n,depth=depth)
+                
+            self.frf.train(n, depth)
 
         if type == "rf" and distribution == "localised":
             self.local_rf = self.server_manager.get_models({},'rf/local-model')

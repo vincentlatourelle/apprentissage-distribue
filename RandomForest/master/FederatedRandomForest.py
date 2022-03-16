@@ -105,8 +105,7 @@ class FederatedRandomForest:
         # print("--> Le master envoie les thresholds selectionnes aux clients")
         # print(thresholds)
 
-        best_threshold = self.server_manager.get({"features": features.tolist(), "thresholds": thresholds.tolist(),
-                                                  "current_tree": current_root.serialize()}, 'rf/best-threshold')
+        best_threshold = self.server_manager.get({"features": features.tolist(), "thresholds": thresholds.tolist(), "current_tree": current_root.serialize()}, 'rf/best-threshold')
 
         # print("<-- Le master recoit les meilleurs features et le nombre de donnees actuels des clients")
         # print(best_threshold)
