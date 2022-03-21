@@ -84,7 +84,7 @@ class ServerManager():
             uri (str): ressource a acceder
 
         Returns:
-            list: _description_
+            list: listes des modeles entraines chez les clients
         """        
         r = self.pool.starmap(inner_get, zip(
             [f'{x}/{uri}' for x in self.clients], [data] * len(self.clients)))
