@@ -11,18 +11,20 @@ sys.path.append(rootdir)
 from RandomForest.randomForest import RandomForest
 from RandomForest.node import Node
 
-
 class FederatedRandomForest:
+    """Classe qui gere le processus d'entrainement d'une random forest en mode federe
+    """
+
     def __init__(self, server_manager) -> None:
         self.server_manager = server_manager
         self.forest = RandomForest()
         self.features = None
 
     def select_features(self):
-        """ Choisi un nombre aléatoire de features parmi la liste de features
+        """Choisi aleatoirement entre 2 et racine carre du nombre de feature + 4 features parmis les features des clients, sans repetition de feature.
 
-        :return: Liste de n features
-        :rtype: np.array de dimension n_features
+        Returns:
+            np.array: Array contenant les features (str)
         """
 
         return np.random.choice(self.features, replace=False,
@@ -32,13 +34,14 @@ class FederatedRandomForest:
         """ Pour chaque features, recupere le min et le max, puis definit le threshold qui
             est un valeur entre le min et le max
 
-        :param features: Liste des features selectionnes
-        :type features: list
-        :param thresholds: thresholds selectionnes par les clients pour chaque feature
-        :type thresholds: np.array de dimension n_client x n_feature
-        :return: thresholds selectionnes pour chaque feature
-        :rtype: np.array de dimension n_feature
+        Args:
+            features (list): Liste des features selectionnes
+            thresholds (np.array): thresholds selectionnes par les clients pour chaque feature
+
+        Returns:
+            np.array: thresholds selectionnes pour chaque feature
         """
+
         values = np.array([])
 
         for f in range(len(features)):
@@ -52,19 +55,38 @@ class FederatedRandomForest:
         return values
 
     def get_label(self, current_tree):
+        """Recupere les labels des clients 
+
+        Args:
+            current_tree (Node): Racine de l'arbre en developpement
+
+        Returns:
+            list: liste des labels (cibles)
+        """
+
         data = {"current_tree": current_tree.serialize()}
-        labels = np.concatenate(self.server_manager.get(data, 'rf/leaf').tolist(), axis=0)
+        labels = np.concatenate(self.server_manager.get(
+            data, 'rf/leaf').tolist(), axis=0)
 
         # print("<-- Le master recoit les labels des clients")
         # print(labels)
         # print("**************************************************************************************")
 
         result, count = np.unique(labels, return_counts=True)
-        if len(result) == 0:
-            return "resultat_invalid"
+
         return result[np.argmax(count)]
-    
+
     def get_label_vote(self, current_tree):
+        """Fait un vote majoritaire selon les cibles majoritaires chez les clients
+           Un vote et un poids est obtenu de chaque client avec rf/leaf-vote et cette fonction
+           concatene ces votes pour construire la feuille.
+
+        Args:
+            current_tree (Node): Racine de l'arbre en developpement
+
+        Returns:
+            str: label (cible) obtenu par le vote majoritaire
+        """
         data = {"current_tree": current_tree.serialize()}
         labels = self.server_manager.get(data, 'rf/leaf-vote')
 
@@ -74,16 +96,22 @@ class FederatedRandomForest:
         votes = defaultdict(int)
         for v in labels:
             votes[v["label"]] += v["count"]
-            
+
         label = max(votes, key=votes.get)
         return label
 
     def build_tree(self, current_node, current_root, depth=15):
-        """Construit un arbre de facon distribuee
+        """Construit un arbre decisionnel de facon federe, recursivement
 
-        :param current_tree: arbre actuellement en construction
-        :type current_tree: Node
+        Args:
+            current_node (Node): Noeud ou assigner un separation (threshold) ou une valeur de feuille
+            current_root (Node): racine de l'arbre en developpement
+            depth (int, optional): profondeur de l'arbre (condition d'arret). Defaults to 15.
+
+        Returns:
+            Node: racine de l'arbre developpe
         """
+
         if depth == 0:
             current_node.value = self.get_label_vote(current_root)
             return current_node.value
@@ -92,9 +120,9 @@ class FederatedRandomForest:
 
         # print("--> Le master envoie les features aux clients")
         # print(features)
-        
-        
-        thresholds = self.server_manager.get({"features": features.tolist(), "current_tree": current_root.serialize()},'rf/thresholds')
+
+        thresholds = self.server_manager.get({"features": features.tolist(
+        ), "current_tree": current_root.serialize()}, 'rf/thresholds')
 
         # print("<-- Le master recoit les thresholds des clients")
         # print(thresholds)
@@ -105,7 +133,8 @@ class FederatedRandomForest:
         # print("--> Le master envoie les thresholds selectionnes aux clients")
         # print(thresholds)
 
-        best_threshold = self.server_manager.get({"features": features.tolist(), "thresholds": thresholds.tolist(), "current_tree": current_root.serialize()}, 'rf/best-threshold')
+        best_threshold = self.server_manager.get({"features": features.tolist(
+        ), "thresholds": thresholds.tolist(), "current_tree": current_root.serialize()}, 'rf/best-threshold')
 
         # print("<-- Le master recoit les meilleurs features et le nombre de donnees actuels des clients")
         # print(best_threshold)
@@ -128,35 +157,28 @@ class FederatedRandomForest:
 
         # Ajouter le meilleur feature et separation a "current_tree"
         current_node.feature = best_feature
-        current_node.threshold = thresholds[np.where(features == best_feature)][0]
+        current_node.threshold = thresholds[np.where(
+            features == best_feature)][0]
 
         # Construit l'arbre de gauche
         lNode = Node()
         current_node.lNode = lNode
-        lres = self.build_tree(lNode, current_root, depth - 1)
+        self.build_tree(lNode, current_root, depth - 1)
         # Construit l'arbre de droite
         rNode = Node()
         current_node.rNode = rNode
-        rres = self.build_tree(rNode, current_root, depth - 1)
-
-        # Fusionne si la separation etait invalide
-        # Devrait pas etre utilise
-        if lres == "resultat_invalid":
-            current_node.lNode.value = current_node.rNode.left_most_leaf()
-        elif rres == "resultat_invalid":
-            current_node.rNode.value = current_node.lNode.right_most_leaf()
+        self.build_tree(rNode, current_root, depth - 1)
 
         return current_root
 
     def train(self, n=100, depth=3):
-        """ Entraine le modele en construisant un arbre de facon distribuee puis en
-            l'ajoutant au Random Forest
+        """Entraine le model en contruisant n arbre de facon distribuee
 
-            :param n: Nombre d'arbres
-            :type n: int
-            :param depth: Profondeur maximale de l'arbre
-            :type depth: int
+        Args:
+            n (int, optional): nombre d'arbres. Defaults to 100.
+            depth (int, optional): profondeur maximal des arbres. Defaults to 3.
         """
+
         self.get_clients_features()
 
         for t in range(n):
@@ -166,17 +188,19 @@ class FederatedRandomForest:
             # Ajouter current_tree a la foret
             self.forest.add(current_tree)
 
-        
         self.send_forest()
-        
+
     def send_forest(self):
+        """ Envoie la foret construite aux clients
+        """
         # Envoyer la foret aux clients
         json_forest = self.forest.serialize()
-        
-        self.server_manager.post([{'forest': json_forest}] * len(self.server_manager.clients), 'rf/random-forest')
+
+        self.server_manager.post(
+            [{'forest': json_forest}] * len(self.server_manager.clients), 'rf/random-forest')
 
     def get_clients_features(self):
+        """Récupère les features des clients
         """
-        Récupère les features des clients
-        """
+
         self.features = self.server_manager.get({}, 'rf/features')[0]

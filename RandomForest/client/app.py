@@ -1,3 +1,7 @@
+"""Application Flask qui traite les demandes du master et les renvoies a la classe Client
+    Chaque fonction est associe a une fonction du Client
+"""
+
 from joblib import dump, load
 import io
 import os
@@ -14,6 +18,7 @@ sys.path.append(rootdir)
 
 from RandomForest.randomForest import RandomForest
 from RandomForest.node import Node
+
 
 app = Flask(__name__)
 
@@ -43,14 +48,15 @@ def get_leaf():
 
     return jsonify(labels.tolist())
 
+
 @app.route('/rf/leaf-vote')
 def get_leaf_vote():
     current_tree = Node.deserialize(request.get_json()['current_tree'])
-    label, count  = c.get_leaf_vote(current_tree)
+    label, count = c.get_leaf_vote(current_tree)
 
     # print("Le client recoit l'arbre actuel et renvoit les labels associes au noeud actuel", file=sys.stderr)
 
-    return jsonify({"label":label, "count":count})
+    return jsonify({"label": label, "count": count})
 
 
 @app.route('/rf/random-forest', methods=['POST'])
@@ -69,7 +75,7 @@ def set_new_forest():
 
 @app.route('/rf/local-accuracy')
 def get_local_accuracy():
-    accuracy, n  = c.get_local_accuracy()
+    accuracy, n = c.get_local_accuracy()
 
     return jsonify({"accuracy": accuracy, "n": n})
 
@@ -113,18 +119,19 @@ def get_features():
 
     return jsonify(features)
 
+
 @app.route('/rf/local-model')
 def get_local_model():
     model = c.get_local_model()
     bytes_io = io.BytesIO()
     dump(model, bytes_io)
-    bytes_io.seek(0)  
-    
-      
+    bytes_io.seek(0)
+
     return send_file(
         bytes_io,
         attachment_filename='model',
     )
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", debug=True)

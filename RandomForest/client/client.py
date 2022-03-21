@@ -4,38 +4,48 @@ from sklearn.ensemble import RandomForestClassifier
 
 
 class Client:
+    """Classe qui gere les operations des clients dans la construction d'une random forest ferere
+    """
+
     def __init__(self, dataset=None) -> None:
         self.dataset = dataset
         self.forest = None
         self.labels = None
         self.test_dataset = None
         self.test_labels = None
-        
+
         self.current_dataset = None
         self.current_labels = None
 
     def __bootstrap(self, x):
-        """ Effectue un bootstap sur le dataset x
+        """Effectue un bootstap sur le dataset x
 
-        :param x: le dataset pour le bootstrap
-        :type x: pd.Dataframe
-        :return: Donnees selectionnees
-        :rtype: pd.Dataframe
+        Args:
+            x (pd.Dataframe): le dataset utilise pour le bootstrap
+
+        Returns:
+            pd.Dataframe: Donnees selectionnees du dataset
         """
+
         idx = np.random.choice(len(x) - 1, replace=True, size=len(x))
         return x.iloc[idx]
 
     def get_best_threshold(self, features, splits, current_tree):
-        """Determine le threshold qui permet de mieux separer les donnees, selon la separation actuelle
+        """Obtient le couple feature, valeur de separation qui ameliore le plus
+           l'indice de gini pour le dataset du client.
 
-        :param features: Liste des features a evaluer
-        :type features: list
-        :param splits: liste des thresholds associes aux features
-        :type splits: list
-        :param current_tree: arbre actuellement construit
-        :type current_tree: Node
+        Args:
+            features (list): liste des features a evaluer
+            splits (list): liste des valeurs de separation associees aux features
+            current_tree (Node): Arbre actuellement developpe
+
+        Returns:
+            tuple: tuple contenant:
+                str: nom de l'attribut selectionne
+                int: nombre de donnees actuellement evalues
         """
-        # Separer les donnees en fonctions de l'arbre courant 
+
+        # Separer les donnees en fonctions de l'arbre courant
         labels = self.current_labels
         dataset = self.current_dataset
 
@@ -51,136 +61,174 @@ class Client:
         # calcul de gini pour chaque feature
         ds_star = dataset[features]
         thresholds = pd.DataFrame([splits], columns=features)
-        ginis = ds_star.apply(lambda col: Client.gini_gain(col, labels, thresholds, total_gini), 0).values
+        ginis = ds_star.apply(lambda col: Client.gini_gain(
+            col, labels, thresholds, total_gini), 0).values
 
-        # retourne l'attribut permetant d'avoir le meilleur "gain de gini", ainsi que le nombre 
+        # retourne l'attribut permetant d'avoir le meilleur "gain de gini", ainsi que le nombre
         # donnees dans le dataset courant
 
         i_best_gini = np.argmax(ginis)
         best_gini_feature = features[i_best_gini]
         n_data = len(labels)
-        
+
         if ginis[i_best_gini] <= 0:
             return "no-gain", 0
 
         return best_gini_feature, n_data
 
     def get_leaf(self, current_tree):
+        """Obtient la distribution des classes pour un dataset
+
+        Args:
+            current_tree (Node): arbre actuellement evalue
+
+        Returns:
+            list: labels (cibles)
+        """
         """Obtient la distribution des classes pour un dataset 
            (possiblement juste la classe majoritaire si on decide d'utiliser un vote)
 
         :param current_tree: arbre actuellement evalue
         :type current_tree: Node
         """
-        # Separer les donnees en fonctions de l'arbre courant 
+        # Separer les donnees en fonctions de l'arbre courant
         labels = self.labels.copy()
         dataset = self.dataset.copy()
         if current_tree is not None:
-            dataset, labels = current_tree.get_current_node_data(dataset, labels)
+            dataset, labels = current_tree.get_current_node_data(
+                dataset, labels)
 
         # retourner le nombre de valeurs perturbees pour chaque classe dans le dataset courant
         return labels
-    
-    def get_leaf_vote(self, current_tree):
-        """Obtient la distribution des classes pour un dataset 
-           (possiblement juste la classe majoritaire si on decide d'utiliser un vote)
 
-        :param current_tree: arbre actuellement evalue
-        :type current_tree: Node
+    def get_leaf_vote(self, current_tree):
+        """Obtient la classe majoritaire selon les cibles majoritaires chez les clients
+
+        Args:
+            current_tree (Node): arbre actuellement evalue
+
+        Returns:
+            tuple: tuple contenant les valeurs suivantes:
+                label (cible) majoritaire
+                nombre de labels au total
         """
-        # Separer les donnees en fonctions de l'arbre courant 
+
+        # Separer les donnees en fonctions de l'arbre courant
         labels = self.labels.copy()
         dataset = self.dataset.copy()
         if current_tree is not None:
-            dataset, labels = current_tree.get_current_node_data(dataset, labels)
+            dataset, labels = current_tree.get_current_node_data(
+                dataset, labels)
 
         # retourner le nombre de valeurs perturbees pour chaque classe dans le dataset courant
-        if len(labels)>0:
+        if len(labels) > 0:
             result, count = np.unique(labels, return_counts=True)
-            
+
             return result[np.argmax(count)], len(self.labels)
-        
+
         return "", 0
 
     def set_new_forest(self, random_forest):
         """Modifie la randomForest du client
 
-        :param random_forest: nouvelle randomForest
-        :type random_forest: RandomForest
+        Args:
+            random_forest (Node): Nouvelle RandomForest
         """
         self.forest = random_forest
 
     def get_federated_accuracy(self):
+        """Calcule la precision de l'arbre entraine de facon federe
+
+        Returns:
+            tuple: tuple contentant:
+                float: justesse (accuracy)
+                int: nombre de donnees dans l'ensemble de test
         """
-        Calcule la précision de l'algo pour une distribution federee
-        :return: Precision federee
-        :rtype: float
-        """
+
         res = self.forest.predict(self.test_dataset)
 
-        accuracy = 1 - sum([int(value != self.test_labels[x]) for x, value in enumerate(res)]) / len(self.test_labels)
+        accuracy = 1 - sum([int(value != self.test_labels[x])
+                           for x, value in enumerate(res)]) / len(self.test_labels)
 
         return accuracy, len(self.test_dataset)
 
     def get_local_accuracy(self):
+        """Calcule la precision d'un arbre entraine localement et teste localement
+
+        Returns:
+            tuple: tuple contentant:
+                float: justesse (accuracy)
+                int: nombre de donnees dans l'ensemble de test
         """
-        Calcule la précision de l'algo pour une distribution locale
-        :return: Precision locale
-        :rtype: float
-        """
+
         # Entrainer un modele de randomForest (scikit-learn) et retourner l'accuracy
         dt = RandomForestClassifier()
         dt.fit(self.dataset, self.labels)
         res = dt.predict(self.test_dataset)
-        accuracy = 1 - sum([int(value != self.test_labels[x]) for x, value in enumerate(res)]) / len(self.test_labels)
+        accuracy = 1 - sum([int(value != self.test_labels[x])
+                           for x, value in enumerate(res)]) / len(self.test_labels)
         return accuracy, len(self.test_dataset)
-    
+
     def get_local_model(self):
+        """Retourne un model entraine localement
+
+        Returns:
+            RandomForestClassifier: Model scikit-learn entraine localement
+        """
         dt = RandomForestClassifier()
         dt.fit(self.dataset, self.labels)
         return dt
 
     def get_thresholds(self, features, current_tree):
-        """ Pour chaque features, recupere le min et le max, puis definit le threshold qui
+        """Pour chaque features, recupere le min et le max, puis definit le threshold qui
             est un valeur entre le min et le max
 
-        :param features: Liste des features selectionnes
-        :type features: list
-        :param thresholds: thresholds selectionnes par les clients pour chaque feature
-        :type thresholds: np.array de dimension n_client x n_feature
-        :return: thresholds selectionnes pour chaque feature
-        :rtype: np.array de dimension n_feature
+        Args:
+            features (list): Liste des features selectionnes par le master
+            current_tree (Node): Arbre actuel (pour la separation des donnees)
+
+        Returns:
+            list: Array contenant une separation pour chaque feature
         """
+
         labels = self.labels.copy()
         dataset = self.dataset.copy()
         if current_tree is not None:
-            dataset, labels = current_tree.get_current_node_data(dataset, labels)
-            
+            dataset, labels = current_tree.get_current_node_data(
+                dataset, labels)
+
         self.current_dataset = dataset
         self.current_labels = labels
-            
+
         values = []
         for f in features:
             col = dataset[f]
             minimum = col.min()
             maximum = col.max()
-            if  np.isnan(minimum) or np.isnan(maximum):
+            if np.isnan(minimum) or np.isnan(maximum):
                 values.append(np.nan)
             else:
-                values.append(np.random.default_rng().uniform(low=minimum, high=maximum))
+                values.append(np.random.default_rng().uniform(
+                    low=minimum, high=maximum))
 
         return values
 
     def get_features(self):
-        """
-        Recupere les features (colonnes) du dataset du client sous forme de liste
+        """Recupere les features (colonnes) du dataset du client sous forme de liste
 
-        :return: liste des features du client
-        :rtype: list
+        Returns:
+            list: Liste des features du client
         """
+
         return list(self.dataset.columns)
 
     def set_dataset(self, dataset, labels):
+        """Mise a jour du dataset (et des labels) du client
+
+        Args:
+            dataset (pd.DataFrame): dataset a modifier
+            labels (list): liste des labels a modifier
+        """
         """
         Mise a jour du dataset (et des labels) du client
 
@@ -197,19 +245,21 @@ class Client:
 
         self.test_dataset = dataset.loc[~dataset.index.isin(
             train_idx)].copy()
-        self.test_labels = labels.loc[~labels.index.isin(train_idx)].values.T[0]
+        self.test_labels = labels.loc[~labels.index.isin(
+            train_idx)].values.T[0]
 
         self.dataset = dataset.loc[train_idx].copy()
         self.labels = labels.loc[train_idx].values.T[0]
 
     @staticmethod
     def gini_impurity(y):
-        """ Calcul l'impureté de Gini
+        """Calcul l'impureté de Gini
 
-        :param y: Liste des différents labels
-        :type y: list
-        :return: L'impureté de Gini (entre 0 et 1)
-        :rtype: float
+        Args:
+            y (list): Liste des différents labels
+
+        Returns:
+            float: L'impureté de Gini (entre 0 et 1)
         """
 
         l, count = np.unique(y, return_counts=True)
@@ -218,26 +268,25 @@ class Client:
 
     @staticmethod
     def gini_gain(col, y, thresholds, total_gini):
-        """
-        Permet de calculer le gain de Gini
+        """_summary_
 
-        :param col: Nom de la colonne associé au seuil (threshold)
-        :type col: str
-        :param y: Liste des differents labels
-        :type y: list
-        :param thresholds: Seuil de séparation du noeud de l'arbre associe a une colonne
-        :type thresholds: float
-        :param total_gini:
-        :type total_gini: float
-        :return: Le gain de Gini
-        :rtype: float
+        Args:
+            col (str): Nom de la colonne associé au seuil (threshold)
+            y (list): Liste des differents labels
+            thresholds (float): Seuil de séparation du noeud de l'arbre associe a une colonne
+            total_gini (float): Gain de Gini total du noeud courant avant la separation en 2 noeuds enfants
+
+        Returns:
+            _type_: Le gain de Gini
         """
+
         threshold = thresholds[col.name][0]
         i_l = np.where(col <= threshold)[0]
         i_r = np.where(col > threshold)[0]
 
         l_gini = Client.gini_impurity(y[i_l])
         r_gini = Client.gini_impurity(y[i_r])
-        sum_gini = total_gini - (len(i_l) / len(y)) * l_gini - (len(i_r) / len(y)) * r_gini
+        sum_gini = total_gini - (len(i_l) / len(y)) * \
+            l_gini - (len(i_r) / len(y)) * r_gini
 
         return sum_gini

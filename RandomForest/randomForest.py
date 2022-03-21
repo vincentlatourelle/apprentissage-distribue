@@ -3,49 +3,54 @@ from RandomForest.node import Node
 
 
 class RandomForest:
+    """Random Forest (collection d'arbre)
+    """
+
     def __init__(self) -> None:
+
         self.forest = []
 
     def add(self, node):
-        """Ajoute un arbre a la randomForest
+        """Ajoute un arbra a la randomForest
 
-        :param node: racine de l'arbre
-        :type node: Node
+        Args:
+            node (Node): noeud a la racine de l'arbre
         """
+
         self.forest.append(node)
 
     def predict(self, x):
-        """ Prediction de la randomforest pour une donnee
+        """Prediction de la randomforest pour une donnee
 
-        :param x: la donnee a predire
-        :type x: np.array
-        :return: label
-        :rtype: str
+        Args:
+            x (pd.DataFrame): la donnee a predire
+
+        Returns:
+            str: label de la valeur predite
         """
+
         f_result = []
         for index, x_i in x.iterrows():
             result = [tree.predict(x_i) for tree in self.forest]
             result, count = np.unique(result, return_counts=True)
             f_result.append(result[np.argmax(count)])
         return f_result
-    
+
     def serialize(self):
-        """
-        Serialisation du Random Forest (dictionnaire --> json)
+        """Serialisation de la foret aleatore
 
-        :return: Arbre serialise
-        :rtype: str (json)
+        Returns:
+            list: structure json contenant une liste des arbres de la foret
         """
+
         return [x.serialize() for x in self.forest]
-    
-    def deserialize(self, forest):
-        """
-        Deserialisation du Random Forest (json --> dictionnaire)
 
-        :param forest:
-        :type forest:
-        :return: Arbre deserialise
-        :rtype: dict
+    def deserialize(self, forest):
+        """Deserialisation du Random Forest (json --> dictionnaire)
+
+        Args:
+            forest (list): Liste des arbres de la foret
         """
+
         for x in forest:
             self.add(Node.deserialize(x))

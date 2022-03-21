@@ -2,6 +2,9 @@ import numpy as np
 
 
 class Node:
+    """Noeud d'un arbre de decision
+    """
+
     def __init__(self, feature=None, threshold=None, lNode=None, rNode=None, value=None) -> None:
         self.feature = feature
         self.threshold = threshold
@@ -10,13 +13,15 @@ class Node:
         self.value = value
 
     def predict(self, x):
-        """ Prediction de l'arbre pour une donnee
+        """Prediction de l'arbre en parcourant l'arbre de decision pour une donnee x
 
-        :param x: la donnee a predire
-        :type x: np.array
-        :return: label
-        :rtype: str
+        Args:
+            x (pd.Series): la donnee a predire
+
+        Returns:
+            str: label qui correspond a la valeur predite
         """
+
         if self.value is not None:
             return self.value
         if x[self.feature] <= self.threshold:
@@ -25,11 +30,12 @@ class Node:
             return self.rNode.predict(x)
 
     def get_custom_dict(self):
-        """Retourne un dictionnaire (pour la serialisation)
+        """Retourne un dictionnaire pour la serialisation
 
-        :return: dictionnaire decrivant le Node
-        :rtype: dict
+        Returns:
+            dict: dictionnaire decrivant le Node
         """
+
         if self.value is not None:
             custom_dict = {
                 "value": self.value,
@@ -50,22 +56,25 @@ class Node:
         return custom_dict
 
     def serialize(self):
-        """Retourne le dictionnaire serialise
+        """Retourne le dictionnaire a serialiser
 
-        :return: json
-        :rtype: dict
+        Returns:
+            dict: Structure en json du noeud
         """
+
         return self.get_custom_dict()
 
     @staticmethod
     def deserialize(tree_dict):
-        """ Deserialise un json pour creer un Node
+        """Deserialise un json pour creer un Node
 
-        :param tree_dict: description du Node
-        :type tree_dict: dict
-        :return: racine de l'arbre
-        :rtype: Node
+        Args:
+            tree_dict (dict): Structure en json du noeud
+
+        Returns:
+            Node: racine de l'arbre deserialise
         """
+
         if len(tree_dict) == 0:
             return Node()
 
@@ -81,6 +90,19 @@ class Node:
         return new_tree
 
     def get_current_node_data(self, dataset, labels):
+        """ Obtient les donnees separees en fonction de l'arbre actuel et du noeud courant
+
+        Args:
+            dataset (pd.DataFrame): Donnees a separer
+            labels (pd.Series): Labels associes aux donnees
+
+        Returns:
+            tuple: tuple contenant :
+                df (pd.DataFrame): 
+                    Sous-ensemble du dataset initial contenant les donnees a evaluer au noeud courant
+                new_labels (pd.Series): 
+                    Sous-ensemble des labels initials contenant les labels a evaluer au noeud courant
+        """
 
         # Si c'est une feuille retourner null
         if not self.value is None:
@@ -108,17 +130,3 @@ class Node:
             return rdf, r_new_labels
 
         return None, None
-
-    def right_most_leaf(self):
-        current_node = self
-        while current_node.value is None:
-            current_node = current_node.rNode
-
-        return current_node.value
-
-    def left_most_leaf(self):
-        current_node = self
-        while current_node.value is None:
-            current_node = current_node.lNode
-
-        return current_node.value
