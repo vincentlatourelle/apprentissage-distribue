@@ -21,9 +21,12 @@ class Node:
         Returns:
             str: label qui correspond a la valeur predite
         """
-
+        
+        # Si c'est une feuille
         if self.value is not None:
             return self.value
+        
+        # Si c'est un noeud
         if x[self.feature] <= self.threshold:
             return self.lNode.predict(x)
         else:
@@ -36,10 +39,12 @@ class Node:
             dict: dictionnaire decrivant le Node
         """
 
+        # Si le noeud est une feuille
         if self.value is not None:
             custom_dict = {
                 "value": self.value,
             }
+        # Si c'est le noeud actuellement developpe
         elif self.feature is None:
             return {}
         else:
@@ -48,6 +53,7 @@ class Node:
                 "threshold": self.threshold,
             }
 
+        # Parcourt recursivement les noeuds enfants (gauche et droite)
         if self.lNode:
             custom_dict['lNode'] = self.lNode.get_custom_dict()
         if self.rNode:
@@ -79,6 +85,7 @@ class Node:
             return Node()
 
         new_tree = Node()
+        # Pour chaque attribut (feature) de l'objet (chaque cle du dict)
         for f in tree_dict:
             if f == "lNode":
                 new_tree.lNode = Node.deserialize(tree_dict[f])
@@ -112,6 +119,7 @@ class Node:
         if self.feature is None:
             return dataset, labels
 
+        # Separe en deux dataset selon le threshold
         i_l = np.where(dataset[self.feature].values <= self.threshold)
         i_r = np.where(dataset[self.feature].values > self.threshold)
         ldf = dataset.iloc[i_l]
@@ -120,11 +128,12 @@ class Node:
         llabels = labels[i_l]
         rlabels = labels[i_r]
 
-        # si le noeud gauche est present, l'explorer et retourner ce qu'il retourne si ce n'est pas nul
+        # si le noeud gauche est present, l'explorer et retourner ce qu'il retourne si ce n'est pas null
         ldf, l_new_labels = self.lNode.get_current_node_data(ldf, llabels)
         if not ldf is None:
             return ldf, l_new_labels
 
+        # si le noeud droite est present, l'explorer et retourner ce qu'il retourne si ce n'est pas null
         rdf, r_new_labels = self.rNode.get_current_node_data(rdf, rlabels)
         if not rdf is None:
             return rdf, r_new_labels

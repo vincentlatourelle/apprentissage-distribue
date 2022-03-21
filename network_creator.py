@@ -12,30 +12,37 @@ class NetworkCreator:
         self.dataset = dataset
         self.labels = labels
 
-    def split_dataset(self, server_manager, repartition=None):
+    def split_dataset(self, server_manager, data_repartition=None, label_repartition = None):
         """ Separe les donnees et les transmets au client
             (seulement utile dans un contexte de tests)
         """
 
         n_clients = len(server_manager.clients)
 
-        if repartition and n_clients == 2:
+        # Cas avec 2 clients (et repartition inegales)
+        if data_repartition and n_clients == 2:
             train_dataset = self.dataset.copy()
             train_dataset['target'] = self.labels
 
+            # Regroupe par target et prend un echantillon de (repartition)% des donnees pour chaque target
             train_dataset1 = train_dataset.groupby('target', group_keys=False).apply(
-                lambda x: x.sample(frac=repartition))
+                lambda x: x.sample(frac=data_repartition))
+            
+            # Prend les donnees qui n'ont pas ete utilisees dans le premier dataset
             train_dataset2 = train_dataset.loc[~train_dataset.index.isin(
                 train_dataset1.index)]
 
+            # Recupere le target des dataset et l'enleve de ceux-ci
             train_labels1 = train_dataset1['target']
             train_labels2 = train_dataset2['target']
             train_dataset1 = train_dataset1.drop(['target'], axis=1)
             train_dataset2 = train_dataset2.drop(['target'], axis=1)
 
+            # Envoi les datasets au 2 clients
             server_manager.post([{'dataset': train_dataset1.to_dict(), 'labels': train_labels1.to_dict()},
                                  {'dataset': train_dataset2.to_dict(), 'labels': train_labels2.to_dict()}], 'dataset')
 
+        # Cas avec plus de 2 clients (et repartitions egales)
         else:
             train_datasets = []
             train_labels = []
@@ -43,7 +50,9 @@ class NetworkCreator:
             train_dataset = self.dataset.copy()
             train_dataset['target'] = self.labels
 
+            
             for i in range(n_clients):
+                # Prend un echantillon (1/(nombre de clients restant))% par target
                 train_dataset1 = train_dataset.groupby('target', group_keys=False).apply(
                     lambda x: x.sample(frac=1 / (n_clients - i)))
 
@@ -53,14 +62,17 @@ class NetworkCreator:
                 train_dataset = train_dataset.loc[~train_dataset.index.isin(
                     train_dataset1.index)]
 
-            server_manager.post([{'dataset': train_datasets[i].to_dict(), 'labels': train_labels[i].to_dict()} for i in
-                                 range(n_clients)], 'dataset')
+            server_manager.post([{'dataset': train_datasets[i].to_dict(), 'labels': train_labels[i].to_dict()} 
+                                 for i in range(n_clients)], 'dataset')
 
 
 def split(dataset, labels):
+    # Definit l'ensemble d'entrainement aleatoirement avec 80% des donnees du dataset
     train_idx = np.random.choice(
         len(dataset) - 1, replace=False, size=int(len(dataset) * 0.8))
 
+    # Definit l'ensemble de test et les cibles des 20% restants
+    # (les donnees qui ne font pas partie de l'ensemble d'entrainement)
     test_dataset = dataset.loc[~dataset.index.isin(
         train_idx)]
     test_labels = labels.loc[~labels.index.isin(train_idx)]
@@ -161,11 +173,13 @@ def run_all_tests(df, labels, network_creator):
 
     n_clients = [2, 4, 6, 8, 10]
     repartitions = [0.9, 0.8, 0.7, 0.8, 0.5]
-
+    
+    # Roule les tests pour chacune des repartions entre 2 clients (0.9-0.1, 0.8-0.2, ...)
     for repartition in repartitions:
         df_results = run_test(2, repartition, df, labels,
                               network_creator, df_results)
 
+    # Roule les tests pour chaque nombre de clients de n_clients
     for n in n_clients:
         df_results = run_test(n, 0.5, df, labels, network_creator, df_results)
 

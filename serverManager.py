@@ -3,7 +3,6 @@ from joblib import dump, load
 import requests
 from multiprocessing import Pool
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
 
 
 def inner_get(url, data):
@@ -20,7 +19,8 @@ def inner_post_file(url, file):
 
 class ServerManager():
     """Gere l'envoye de requete aux clients
-    """    
+    """
+
     def __init__(self, clients) -> None:
         self.clients = clients
         self.pool = Pool(len(self.clients))
@@ -34,11 +34,11 @@ class ServerManager():
 
         Returns:
             list: Reponse des clients
-        """        
-        
-        r = self.pool.starmap(inner_get, zip(
+        """
+
+        response = self.pool.starmap(inner_get, zip(
             [f'{x}/{uri}' for x in self.clients], [data] * len(self.clients)))
-        json = [resp.json() for resp in r]
+        json = [resp.json() for resp in response]
         return np.array(json, dtype=object)
 
     def post(self, data, uri):
@@ -51,10 +51,10 @@ class ServerManager():
         Returns:
             list: Reponse des clients
         """
-        
-        r = self.pool.starmap(inner_post, zip(
+
+        response = self.pool.starmap(inner_post, zip(
             [f'{x}/{uri}' for x in self.clients], data))
-        return r
+        return response
 
     def post_model(self, uri, model):
         """Effectue un HTTP POST pour envoyer un model aux clients
@@ -65,16 +65,17 @@ class ServerManager():
 
         Returns:
             list: reponse des clients
-        """        
+        """
 
+        # Ajoute le modele dans un bytestream
         bytes_io = io.BytesIO()
         dump(model, bytes_io)
         bytes_io.seek(0)
         file = {'file': ('file', bytes_io)}
 
-        r = self.pool.starmap(inner_post_file, zip(
+        response = self.pool.starmap(inner_post_file, zip(
             [f'{x}/{uri}' for x in self.clients], [file] * len(self.clients)))
-        return r
+        return response
 
     def get_models(self, data, uri):
         """Effectue un HTTP GET pour recevoir les modeles locals entraines chez les clients
@@ -85,12 +86,14 @@ class ServerManager():
 
         Returns:
             list: listes des modeles entraines chez les clients
-        """        
-        r = self.pool.starmap(inner_get, zip(
+        """
+        response = self.pool.starmap(inner_get, zip(
             [f'{x}/{uri}' for x in self.clients], [data] * len(self.clients)))
-        models = [load(io.BytesIO(resp.content)) for resp in r]
+        
+        # Load chacun des modeles dans une liste
+        models = [load(io.BytesIO(resp.content)) for resp in response]
         return models
 
-    def __del__(self):    
+    def __del__(self):
         self.pool.close()
         self.pool.join()

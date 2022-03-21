@@ -120,7 +120,7 @@ class Client:
             dataset, labels = current_tree.get_current_node_data(
                 dataset, labels)
 
-        # retourner le nombre de valeurs perturbees pour chaque classe dans le dataset courant
+        # retourner la cible majoritaire avec le nombre de donnees dans l'ensemble du dataset initial
         if len(labels) > 0:
             result, count = np.unique(labels, return_counts=True)
 
@@ -137,7 +137,7 @@ class Client:
         self.forest = random_forest
 
     def get_federated_accuracy(self):
-        """Calcule la precision de l'arbre entraine de facon federe
+        """Calcule la precision de l'arbre entraine de facon federe (self.forest)
 
         Returns:
             tuple: tuple contentant:
@@ -190,13 +190,15 @@ class Client:
         Returns:
             list: Array contenant une separation pour chaque feature
         """
-
+        
+        # Calcul du dataset courant, en parcourant l'arbre jusqu'au noeud a developper
         labels = self.labels.copy()
         dataset = self.dataset.copy()
         if current_tree is not None:
             dataset, labels = current_tree.get_current_node_data(
                 dataset, labels)
 
+        # Afin d'eviter de recalculer pour get_best_threshold
         self.current_dataset = dataset
         self.current_labels = labels
 
@@ -205,6 +207,8 @@ class Client:
             col = dataset[f]
             minimum = col.min()
             maximum = col.max()
+            
+            # S'il n'y a pas de donnees
             if np.isnan(minimum) or np.isnan(maximum):
                 values.append(np.nan)
             else:
@@ -239,7 +243,8 @@ class Client:
         self.labels = labels
 
         labels = pd.DataFrame(labels).reset_index(drop=True)
-
+        
+        # Selectionne les indexes qui seront dans l'ensemble d'entrainement
         train_idx = np.random.choice(
             len(dataset) - 1, replace=False, size=int(len(dataset) * 0.8))
 
@@ -252,41 +257,40 @@ class Client:
         self.labels = labels.loc[train_idx].values.T[0]
 
     @staticmethod
-    def gini_impurity(y):
+    def gini_impurity(labels):
         """Calcul l'impureté de Gini
 
         Args:
-            y (list): Liste des différents labels
+            labels (list): Liste des différents labels
 
         Returns:
             float: L'impureté de Gini (entre 0 et 1)
         """
-
-        l, count = np.unique(y, return_counts=True)
-        prob = count / len(y)
+        # Corrado Gini :) 
+        l, count = np.unique(labels, return_counts=True)
+        prob = count / len(labels)
         return 1 - np.sum(np.power(prob, 2))
 
     @staticmethod
-    def gini_gain(col, y, thresholds, total_gini):
-        """_summary_
+    def gini_gain(col, labels, thresholds, total_gini):
+        """Calcule la difference entre le gini de l'ensemble total et celui des ensembles separe
 
         Args:
             col (str): Nom de la colonne associé au seuil (threshold)
-            y (list): Liste des differents labels
+            labels (list): Liste des differents labels
             thresholds (float): Seuil de séparation du noeud de l'arbre associe a une colonne
             total_gini (float): Gain de Gini total du noeud courant avant la separation en 2 noeuds enfants
 
         Returns:
-            _type_: Le gain de Gini
+            float: Le gain de Gini
         """
 
         threshold = thresholds[col.name][0]
         i_l = np.where(col <= threshold)[0]
         i_r = np.where(col > threshold)[0]
 
-        l_gini = Client.gini_impurity(y[i_l])
-        r_gini = Client.gini_impurity(y[i_r])
-        sum_gini = total_gini - (len(i_l) / len(y)) * \
-            l_gini - (len(i_r) / len(y)) * r_gini
+        l_gini = Client.gini_impurity(labels[i_l])
+        r_gini = Client.gini_impurity(labels[i_r])
+        sum_gini = total_gini - (len(i_l) / len(labels)) * l_gini - (len(i_r) / len(labels)) * r_gini
 
         return sum_gini

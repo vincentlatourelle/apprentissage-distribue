@@ -16,7 +16,7 @@ class RandomForest:
         Args:
             node (Node): noeud a la racine de l'arbre
         """
-
+        
         self.forest.append(node)
 
     def predict(self, x):
@@ -30,6 +30,8 @@ class RandomForest:
         """
 
         f_result = []
+        # Fait une prediction pour chaque donnee du dataframe en predisant 
+        # avec chaque arbre de la foret
         for index, x_i in x.iterrows():
             result = [tree.predict(x_i) for tree in self.forest]
             result, count = np.unique(result, return_counts=True)

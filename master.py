@@ -44,14 +44,14 @@ class Master:
         if type == "rf" and distribution == "federated":
             n = kwargs['n']
             depth = kwargs['depth']
-            if isinstance(n, list) or isinstance(depth, list):
-                if not isinstance(n, list):
-                    n = [n]
-                if not isinstance(depth, list):
-                    depth = [depth]
+            # if isinstance(n, list) or isinstance(depth, list):
+            #     if not isinstance(n, list):
+            #         n = [n]
+            #     if not isinstance(depth, list):
+            #         depth = [depth]
 
-                n, depth = self.k_fold_cross_validation(
-                    k=10, type=type, distribution=distribution, n=n, depth=depth)
+            #     n, depth = self.k_fold_cross_validation(
+            #         k=10, type=type, distribution=distribution, n=n, depth=depth)
 
             self.frf.train(n, depth)
 
@@ -93,6 +93,8 @@ class Master:
             mins = []
             maxs = []
             var = []
+            
+            # Pour chaque modele entrainer localement, tester chez tous les clients
             for local_model in self.local_rf:
                 self.server_manager.post_model('rf/random-forest', local_model)
 

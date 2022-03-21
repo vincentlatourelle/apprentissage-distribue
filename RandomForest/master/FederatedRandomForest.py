@@ -49,6 +49,7 @@ class FederatedRandomForest:
             min = np.nanmin(col)
             max = np.nanmax(col)
 
+            # Prend une valeur entre la valeur min et max obtenue
             values = np.append(
                 values, np.random.default_rng().uniform(low=min, high=max))
 
@@ -64,6 +65,7 @@ class FederatedRandomForest:
             list: liste des labels (cibles)
         """
 
+        # Recoit une liste des labels de chaque client pour le noeud courant
         data = {"current_tree": current_tree.serialize()}
         labels = np.concatenate(self.server_manager.get(
             data, 'rf/leaf').tolist(), axis=0)
@@ -72,6 +74,7 @@ class FederatedRandomForest:
         # print(labels)
         # print("**************************************************************************************")
 
+        # Fait un vote majoritaire
         result, count = np.unique(labels, return_counts=True)
 
         return result[np.argmax(count)]
@@ -87,12 +90,16 @@ class FederatedRandomForest:
         Returns:
             str: label (cible) obtenu par le vote majoritaire
         """
+        
+        # Recoit un couple (label, nombre de donnees) de chaque client
         data = {"current_tree": current_tree.serialize()}
         labels = self.server_manager.get(data, 'rf/leaf-vote')
 
         # print("<-- Le master recoit les labels des clients")
         # print(labels)
         # print("**************************************************************************************")
+        
+        # Fait un vote majoritaire
         votes = defaultdict(int)
         for v in labels:
             votes[v["label"]] += v["count"]
@@ -112,6 +119,7 @@ class FederatedRandomForest:
             Node: racine de l'arbre developpe
         """
 
+        # Si la limite de profondeur est atteinte
         if depth == 0:
             current_node.value = self.get_label_vote(current_root)
             return current_node.value
@@ -139,6 +147,7 @@ class FederatedRandomForest:
         # print("<-- Le master recoit les meilleurs features et le nombre de donnees actuels des clients")
         # print(best_threshold)
         # print("**************************************************************************************")
+        
         # Vote majoritaire pour avoir la meilleure separation
         votes = dict.fromkeys(features, 0)
         votes['pure'] = 0
