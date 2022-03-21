@@ -13,9 +13,14 @@ class NetworkCreator:
         self.labels = labels
 
     def split_dataset(self, server_manager, data_repartition=None, label_repartition = None):
-        """ Separe les donnees et les transmets au client
-            (seulement utile dans un contexte de tests)
-        """
+        """Separe le dataset entre les clients. S'il y a 2 clients, il y a possibilite 
+        de preciser le pourcentage de donnees chez chaque client et la distribution des donnees chez le premier client.
+
+        Args:
+            server_manager (ServerManager): Le ServerManager pour envoyer les requêtes aux clients
+            data_repartition (float, optional): Pourcentage des donnees allant chez le premier client. Defaults to None.
+            label_repartition (dict, optional): Pourcentage des donnees de chacun des labels chez le client 1. Doit sommer a 1. Defaults to None.
+        """        
 
         n_clients = len(server_manager.clients)
 
@@ -25,12 +30,25 @@ class NetworkCreator:
             train_dataset['target'] = self.labels
 
             # Regroupe par target et prend un echantillon de (repartition)% des donnees pour chaque target
-            train_dataset1 = train_dataset.groupby('target', group_keys=False).apply(
-                lambda x: x.sample(frac=data_repartition))
+            if label_repartition is not None:
+                nb = len(train_dataset)*data_repartition
+                nb_donnees_par_label = {}
+                for k in label_repartition:
+                    nb_donnees_par_label[k] = int(nb*label_repartition[k])
+                
+                
+                train_dataset1 = pd.DataFrame()
+                for i, label in enumerate(train_dataset['target'].unique()):
+                    train_dataset1 = pd.concat([train_dataset1, train_dataset[train_dataset['target'] == label].sample(n=min(len(train_dataset[train_dataset['target'] == label]),nb_donnees_par_label[label]))])
+            
+            else:
+                train_dataset1 = train_dataset.groupby('target', group_keys=False).apply(lambda x: x.sample(frac=data_repartition))
+            
             
             # Prend les donnees qui n'ont pas ete utilisees dans le premier dataset
             train_dataset2 = train_dataset.loc[~train_dataset.index.isin(
                 train_dataset1.index)]
+            
 
             # Recupere le target des dataset et l'enleve de ceux-ci
             train_labels1 = train_dataset1['target']
@@ -67,6 +85,20 @@ class NetworkCreator:
 
 
 def split(dataset, labels):
+    """Separe les donnees/labels (cibles) en donnees/labels d'entrainement et de test
+
+    Args:
+        dataset (pd.DataFrame): Dataset des donnees
+        labels (pd.DataFrame): Dataset des labels (cibles)
+
+    Returns:
+        tuple: tuple contenant les informations suivantes:
+            dataset (pd.DataFrame): donnees d'entrainement
+            labels (pd.DataFrame): labels d'entrainement
+            test_dataset (pd.DataFrame): donnees de test
+            test_labels (pd.DataFrame): labels de test
+
+    """    
     # Definit l'ensemble d'entrainement aleatoirement avec 80% des donnees du dataset
     train_idx = np.random.choice(
         len(dataset) - 1, replace=False, size=int(len(dataset) * 0.8))
@@ -110,7 +142,7 @@ def main():
         run_test(n_clients, repartition, df, labels, network_creator)
 
 
-def run_test(n_clients, repartition, df, labels, network_creator, df_results=None):
+def run_test(n_clients, repartition, df, labels, network_creator, df_results=None, label_repartition=None):
     server_manager = ServerManager(
         ['http://localhost:50{}'.format(str(x).zfill(2)) for x in range(1, n_clients + 1)])
 
@@ -121,7 +153,7 @@ def run_test(n_clients, repartition, df, labels, network_creator, df_results=Non
     start_time = time.time()
 
     for k in range(10):
-        network_creator.split_dataset(server_manager, repartition)
+        network_creator.split_dataset(server_manager, repartition, label_repartition)
 
         master = Master(server_manager)
         master.train(type="rf",
@@ -172,12 +204,15 @@ def run_all_tests(df, labels, network_creator):
                  "federated_var", "local_accuracy", "local_min", "local_max", "local_var", "execution_time"])
 
     n_clients = [2, 4, 6, 8, 10]
-    repartitions = [0.9, 0.8, 0.7, 0.8, 0.5]
+    data_repartitions = [0.9, 0.8, 0.7, 0.8, 0.5]
+    labels_repartitions = [None, {'B':0.75, 'M':0.25}, {'B':0.60, 'M':0.40}, {'B':0.85, 'M':0.15}, 
+                           {'M':0.75, 'B':0.25}, {'M':0.60, 'B':0.40}, {'M':0.85, 'B':0.15}]
     
     # Roule les tests pour chacune des repartions entre 2 clients (0.9-0.1, 0.8-0.2, ...)
-    for repartition in repartitions:
-        df_results = run_test(2, repartition, df, labels,
-                              network_creator, df_results)
+    for data_repartition in data_repartitions:
+        for label_repartition in labels_repartitions:
+            df_results = run_test(2, data_repartition, df, labels,
+                              network_creator, df_results, label_repartition)
 
     # Roule les tests pour chaque nombre de clients de n_clients
     for n in n_clients:
