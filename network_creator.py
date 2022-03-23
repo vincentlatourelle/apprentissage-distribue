@@ -119,7 +119,7 @@ def main():
     if len(sys.argv) < 5:
         print("Usage: python network_creator.py file_path n_clients repartition labels_column\n")
         print("\t file_path: Chemin du fichier csv a lire")
-        print("\t n_clients: nombre de clients a utiliser (maximum de 10, 0 pour l'ensemble des tests)")
+        print("\t n_clients: nombre de clients a utiliser (maximum de 20, 0 pour executer l'ensemble des tests)")
         print("\t repartition: repartition des donnees entre les clients, si on utilise deux clients (0.1 a 0.9)")
         print("\t labels_column: Colonne cible")
         print(" exemple: python3 .\\network_creator.py .\\BCWdata.csv 2 0.5 diagnosis\n")
@@ -191,7 +191,7 @@ def run_test(n_clients, repartition, df, labels, network_creator, df_results=Non
         print("####################################")
 
     if df_results is not None:
-        df_results = add_result_to_df(df_results, centralise, federated, localised, n_clients, repartition,
+        df_results = add_result_to_df(df_results, centralise, federated, localised, n_clients, repartition,label_repartition, 
                                       time.time() - start_time)
     print_results(centralise, federated, localised, time.time() - start_time)
 
@@ -200,13 +200,19 @@ def run_test(n_clients, repartition, df, labels, network_creator, df_results=Non
 
 def run_all_tests(df, labels, network_creator):
     df_results = pd.DataFrame(
-        columns=["n_clients", "repartition", "federated_accuracy", "federated_min", "federated_max",
+        columns=["n_clients", "repartition","label_repartition", "federated_accuracy", "federated_min", "federated_max",
                  "federated_var", "local_accuracy", "local_min", "local_max", "local_var", "execution_time"])
 
-    n_clients = [2, 4, 6, 8, 10]
-    data_repartitions = [0.9, 0.8, 0.7, 0.8, 0.5]
-    labels_repartitions = [None, {'B':0.75, 'M':0.25}, {'B':0.60, 'M':0.40}, {'B':0.85, 'M':0.15}, 
-                           {'M':0.75, 'B':0.25}, {'M':0.60, 'B':0.40}, {'M':0.85, 'B':0.15}]
+    n_clients = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20]
+    data_repartitions = [0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
+    labels_repartitions = [None, 
+                           {'B':0.85, 'M':0.15},
+                           {'B':0.75, 'M':0.25},
+                           {'B':0.60, 'M':0.40},
+                           {'M':0.85, 'B':0.15}, 
+                           {'M':0.75, 'B':0.25}, 
+                           {'M':0.60, 'B':0.40}
+                           ]
     
     # Roule les tests pour chacune des repartions entre 2 clients (0.9-0.1, 0.8-0.2, ...)
     for data_repartition in data_repartitions:
@@ -221,10 +227,11 @@ def run_all_tests(df, labels, network_creator):
     df_results.to_csv('./res.csv', float_format='%f')
 
 
-def add_result_to_df(df, centralise, federated, localised, n_client, repartition, t_execution):
+def add_result_to_df(df, centralise, federated, localised, n_client, repartition,label_repartition, t_execution):
     df2 = {
         "n_clients": n_client,
         "repartition": repartition,
+        "label_repartition":label_repartition,
         "federated_accuracy": np.mean([config['accuracy'] for config in federated]),
         "federated_min": np.mean([config['min'] for config in federated]),
         "federated_max": np.mean([config['max'] for config in federated]),
