@@ -62,6 +62,7 @@ class Master:
 
         elif type == "rf" and distribution == "centralised":
             self.rf = RandomForestClassifier(
+                random_state=1234,
                 n_estimators=kwargs['n'], max_depth=kwargs['depth'])
             self.rf.fit(kwargs['dataset'].values, kwargs['labels'])
 

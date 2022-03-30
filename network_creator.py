@@ -126,9 +126,10 @@ def split(dataset, labels):
             test_dataset (pd.DataFrame): donnees de test
             test_labels (pd.DataFrame): labels de test
 
-    """    
+    """
+    rng = np.random.default_rng(1234)    
     # Definit l'ensemble d'entrainement aleatoirement avec 80% des donnees du dataset
-    train_idx = np.random.choice(
+    train_idx = rng.choice(
         len(dataset) - 1, replace=False, size=int(len(dataset) * 0.8))
 
     # Definit l'ensemble de test et les cibles des 20% restants
@@ -139,24 +140,27 @@ def split(dataset, labels):
 
     dataset = dataset.loc[train_idx]
     labels = labels.loc[train_idx]
-
+    
+    
     return dataset, labels, test_dataset, test_labels
 
 
 def main():
-    if len(sys.argv) < 5:
+    if len(sys.argv) < 6:
         print("Usage: python network_creator.py file_path n_clients repartition labels_column\n")
         print("\t file_path: Chemin du fichier csv a lire")
         print("\t n_clients: nombre de clients a utiliser (maximum de 20, 0 pour executer l'ensemble des tests)")
         print("\t repartition: repartition des donnees entre les clients, si on utilise deux clients (0.1 a 0.9)")
         print("\t labels_column: Colonne cible")
-        print(" exemple: python3 .\\network_creator.py .\\BCWdata.csv 2 0.5 diagnosis\n")
+        print("\t cross_validation: 0=non ou 1=oui ")
+        print(" exemple: python3 .\\network_creator.py .\\BCWdata.csv 2 0.5 diagnosis 0\n")
         return
 
     file_path = sys.argv[1]
     n_clients = int(sys.argv[2])
     repartition = float(sys.argv[3])
     labels_column = sys.argv[4]
+    cross_validation = bool(int(sys.argv[5]))
 
     df = pd.read_csv(file_path)
 
@@ -167,10 +171,10 @@ def main():
     if n_clients == 0:
         run_all_tests(df, labels, network_creator)
     else:
-        run_test(n_clients, repartition, df, labels, network_creator)
+        run_test(n_clients, repartition, df, labels, network_creator, cross_validation=cross_validation)
 
 
-def run_test(n_clients, repartition, df, labels, network_creator, df_results=None, label_repartition=None, unequal_rep=False):
+def run_test(n_clients, repartition, df, labels, network_creator, df_results=None, label_repartition=None, unequal_rep=False, cross_validation=False):
     server_manager = ServerManager(
         ['http://localhost:5{}'.format(str(x).zfill(3)) for x in range(1, n_clients + 1)])
 
@@ -183,13 +187,15 @@ def run_test(n_clients, repartition, df, labels, network_creator, df_results=Non
     network_creator.split_dataset(server_manager, repartition, label_repartition,unequal_rep=unequal_rep)
     master = Master(server_manager)
     
-    list_n = [10,20,30]
-    list_depth = [10,15,20,25]
-    n, depth = master.cross_validation(6, "rf","federated",n=list_n,depth=list_depth)
+    if cross_validation:
+        list_n = [10,20,30]
+        list_depth = [10,15,20,25]
+        n, depth = master.cross_validation(6, "rf","federated",n=list_n,depth=list_depth)
+    else:
+        n=20
+        depth=20
     
-    print(n,depth)
-    
-    for k in range(10):
+    for k in range(1):
         network_creator.split_dataset(server_manager, repartition, label_repartition,unequal_rep=unequal_rep)
 
         
@@ -240,16 +246,17 @@ def run_all_tests(df, labels, network_creator):
                  "federated_var", "local_accuracy", "local_min", "local_max", "local_var", "execution_time"]
     df_results = pd.DataFrame(columns=columns)
 
-    n_clients = [2, 4, 6]#, 8, 10, 12, 14, 16, 18, 20,40,60,80,100, 120, 140]
+    n_clients = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20]#,40,60,80,100, 120, 140]
     n_clients2 = [2,3,4,5]
     data_repartitions = [0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
     labels_repartitions = [None, 
                            {'B':0.85, 'M':0.15},
                            {'B':0.75, 'M':0.25},
                            {'B':0.60, 'M':0.40},
-                           {'M':0.85, 'B':0.15}, 
-                           {'M':0.75, 'B':0.25}, 
-                           {'M':0.60, 'B':0.40}
+                           {'B':0.50, 'M':0.50},
+                           {'B':0.40, 'M':0.60},
+                           {'B':0.25, 'M':0.75}, 
+                           {'B':0.15, 'M':0.85}, 
                            ]
     
     # Roule les tests pour chacune des repartions entre 2 clients (0.9-0.1, 0.8-0.2, ...)

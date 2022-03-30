@@ -9,11 +9,12 @@
 ## Exécution
 
 - Exécuter ```docker-compose up --scale client={nb-clients}``` à partir de la racine du projet afin de démarrer les clients. ```{nb-clients}``` est le nombre maximum de clients utilisés (100 par defaut).
-- Exécuter ```python3 network_creator.py BCWdata.csv 2 0.5 diagnosis``` :
+- Exécuter ```python3 network_creator.py BCWdata.csv 2 0.5 diagnosis 1``` :
     - ```.\BCWdata.csv``` est l'emplacement du fichier csv contenant.
     - ```2``` est le nombre de clients. Si cette valeur est mise à 0, un ensemble de tests est executé.
     - ```0.5``` est la répartition des données entre les clients, ce paramètre est pris en compte seulement quand 2 clients sont utilisés pour l'instant.
     - ```diagnosis``` est la colonne associée à la cible de prédiction dans le fichier de données.
+    - ```1``` si on veut utiliser la cross-validation (0 si on ne la veut pas).
 
 
 ## Test
