@@ -6,13 +6,14 @@ from master import Master
 from serverManager import ServerManager
 import time
 
+import matplotlib.pyplot as plt
 
 class NetworkCreator:
     def __init__(self, dataset, labels) -> None:
         self.dataset = dataset
         self.labels = labels
 
-    def split_dataset(self, server_manager, data_repartition=None, label_repartition = None):
+    def split_dataset(self, server_manager, data_repartition=None, label_repartition = None, unequal_rep=False):
         """Separe le dataset entre les clients. S'il y a 2 clients, il y a possibilite 
         de preciser le pourcentage de donnees chez chaque client et la distribution des donnees chez le premier client.
 
@@ -23,23 +24,50 @@ class NetworkCreator:
         """        
 
         n_clients = len(server_manager.clients)
+        
+        if unequal_rep:
+            train_datasets = []
+            train_labels = []
 
+            train_dataset = self.dataset.copy()
+            train_dataset['target'] = self.labels
+
+            
+            for i in range(n_clients):
+
+                frac = 1 if i == n_clients -1 else 0.5
+                train_dataset1 = train_dataset.groupby('target', group_keys=False).apply(
+                         lambda x: x.sample(frac=frac))
+
+                train_labels.append(train_dataset1['target'])
+                train_datasets.append(train_dataset1.drop(['target'], axis=1))
+
+                train_dataset = train_dataset.loc[~train_dataset.index.isin(
+                    train_dataset1.index)]
+                
+            for ds in train_datasets:
+                print(len(ds))
+                
+            server_manager.post([{'dataset': train_datasets[i].to_dict(), 'labels': train_labels[i].to_dict()} 
+                                    for i in range(n_clients)], 'dataset')  
+            
+            
         # Cas avec 2 clients (et repartition inegales)
-        if data_repartition and n_clients == 2:
+        elif data_repartition and n_clients == 2:
             train_dataset = self.dataset.copy()
             train_dataset['target'] = self.labels
 
             # Regroupe par target et prend un echantillon de (repartition)% des donnees pour chaque target
             if label_repartition is not None:
                 nb = len(train_dataset)*data_repartition
-                nb_donnees_par_label = {}
+                nb_data_label = {}
                 for k in label_repartition:
-                    nb_donnees_par_label[k] = int(nb*label_repartition[k])
+                    nb_data_label[k] = int(nb*label_repartition[k])
                 
                 
                 train_dataset1 = pd.DataFrame()
                 for i, label in enumerate(train_dataset['target'].unique()):
-                    train_dataset1 = pd.concat([train_dataset1, train_dataset[train_dataset['target'] == label].sample(n=min(len(train_dataset[train_dataset['target'] == label]),nb_donnees_par_label[label]))])
+                    train_dataset1 = pd.concat([train_dataset1, train_dataset[train_dataset['target'] == label].sample(n=min(len(train_dataset[train_dataset['target'] == label]),nb_data_label[label]))])
             
             else:
                 train_dataset1 = train_dataset.groupby('target', group_keys=False).apply(lambda x: x.sample(frac=data_repartition))
@@ -142,33 +170,42 @@ def main():
         run_test(n_clients, repartition, df, labels, network_creator)
 
 
-def run_test(n_clients, repartition, df, labels, network_creator, df_results=None, label_repartition=None):
+def run_test(n_clients, repartition, df, labels, network_creator, df_results=None, label_repartition=None, unequal_rep=False):
     server_manager = ServerManager(
-        ['http://localhost:50{}'.format(str(x).zfill(2)) for x in range(1, n_clients + 1)])
+        ['http://localhost:5{}'.format(str(x).zfill(3)) for x in range(1, n_clients + 1)])
 
     centralise = []
     federated = []
     localised = []
 
     start_time = time.time()
-
+    
+    network_creator.split_dataset(server_manager, repartition, label_repartition,unequal_rep=unequal_rep)
+    master = Master(server_manager)
+    
+    list_n = [10,20,30]
+    list_depth = [10,15,20,25]
+    n, depth = master.cross_validation(6, "rf","federated",n=list_n,depth=list_depth)
+    
+    print(n,depth)
+    
     for k in range(10):
-        network_creator.split_dataset(server_manager, repartition, label_repartition)
+        network_creator.split_dataset(server_manager, repartition, label_repartition,unequal_rep=unequal_rep)
 
-        master = Master(server_manager)
-        master.train(type="rf",
-                     distribution="localised")
+        
+        # master.train(type="rf",
+        #              distribution="localised")
 
-        print("Entrainement local")
-        print(master.test(type="rf",
-                          distribution="local-federated"))
+        # print("Entrainement local")
+        # print(master.test(type="rf",
+        #                   distribution="local-federated"))
 
         dataset, n_labels, test_dataset, test_labels = split(df, labels)
         master.train(type="rf", distribution="centralised",
-                     n=100, depth=300, dataset=dataset, labels=n_labels)
+                      n=100, depth=300, dataset=dataset, labels=n_labels)
 
         master.train(type="rf",
-                     distribution="federated", n=10, depth=15)
+                     distribution="federated", n=n, depth=depth)
 
         print("Centralise")
         res_centralise = master.test(type="rf", distribution="centralised", test_dataset=test_dataset,
@@ -199,11 +236,12 @@ def run_test(n_clients, repartition, df, labels, network_creator, df_results=Non
 
 
 def run_all_tests(df, labels, network_creator):
-    df_results = pd.DataFrame(
-        columns=["n_clients", "repartition","label_repartition", "federated_accuracy", "federated_min", "federated_max",
-                 "federated_var", "local_accuracy", "local_min", "local_max", "local_var", "execution_time"])
+    columns=["n_clients", "repartition","label_repartition", "federated_accuracy", "federated_min", "federated_max",
+                 "federated_var", "local_accuracy", "local_min", "local_max", "local_var", "execution_time"]
+    df_results = pd.DataFrame(columns=columns)
 
-    n_clients = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20]
+    n_clients = [2, 4, 6]#, 8, 10, 12, 14, 16, 18, 20,40,60,80,100, 120, 140]
+    n_clients2 = [2,3,4,5]
     data_repartitions = [0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
     labels_repartitions = [None, 
                            {'B':0.85, 'M':0.15},
@@ -215,16 +253,33 @@ def run_all_tests(df, labels, network_creator):
                            ]
     
     # Roule les tests pour chacune des repartions entre 2 clients (0.9-0.1, 0.8-0.2, ...)
-    for data_repartition in data_repartitions:
-        for label_repartition in labels_repartitions:
-            df_results = run_test(2, data_repartition, df, labels,
-                              network_creator, df_results, label_repartition)
+    df_results_data_repartition = pd.DataFrame(columns=columns)
+    # for data_repartition in data_repartitions:
+    #     df_results_data_repartition = run_test(2, data_repartition, df, labels,
+    #                         network_creator, df_results_data_repartition)
+        
+    df_results_labels_repartition = pd.DataFrame(columns=columns)
+    # for label_repartition in labels_repartitions:
+    #     df_results_labels_repartition = run_test(2, 0.5, df, labels,
+    #                         network_creator, df_results_labels_repartition, label_repartition)
 
     # Roule les tests pour chaque nombre de clients de n_clients
+    df_results_nb_clients = pd.DataFrame(columns=columns)
+    df_results_unequal = pd.DataFrame(columns=columns)
     for n in n_clients:
-        df_results = run_test(n, 0.5, df, labels, network_creator, df_results)
+        df_results_nb_clients = run_test(n, 0.5, df, labels, network_creator, df_results_nb_clients)
+        #df_results_unequal = run_test(n, 0.5, df, labels, network_creator, df_results_unequal, unequal_rep=True)
+        
+        
+    
+    #print_results_scatter(df_results_unequal, 'n_clients')
 
-    df_results.to_csv('./res.csv', float_format='%f')
+    print_results_scatter(df_results_nb_clients, 'n_clients')
+    # # print_results_scatter(df_results_labels_repartition, 'label_repartition')
+    # print_results_scatter(df_results_data_repartition, 'repartition')
+    
+    df_results = pd.concat([df_results, df_results_nb_clients, df_results_data_repartition, df_results_labels_repartition])
+    df_results.to_csv('./res2.csv', float_format='%f')
 
 
 def add_result_to_df(df, centralise, federated, localised, n_client, repartition,label_repartition, t_execution):
@@ -244,6 +299,23 @@ def add_result_to_df(df, centralise, federated, localised, n_client, repartition
         "execution_time": t_execution
     }
     return df.append(df2, ignore_index=True)
+
+def print_results_scatter(df_results,x_columns):
+    plt.plot(df_results[x_columns].values, df_results['federated_accuracy'].values, label='federated', color='b')
+    plt.plot(df_results[x_columns].values, df_results['federated_min'].values, label='federated_min', color='b', linestyle=":")
+    plt.plot(df_results[x_columns].values, df_results['federated_max'].values, label='federated_max', color='b', linestyle="-.")
+    
+    plt.plot(df_results[x_columns].values, df_results['local_accuracy'].values, label='local', color='r')
+    plt.plot(df_results[x_columns].values, df_results['local_min'].values, label='local_min', color='r', linestyle=":")
+    plt.plot(df_results[x_columns].values, df_results['local_max'].values, label='local_max', color='r', linestyle="-.")
+    
+    
+    plt.plot(df_results[x_columns].values, df_results['centralise_accuracy'].values, label='centralised', color='g')
+    plt.xlabel(x_columns)
+    plt.ylabel('Accuracy')
+    # plt.xticks(range(len(df_results[x_columns].values)), df_results[x_columns].values)
+    plt.legend()
+    plt.show()
 
 
 def print_results(centralise, federated, localised, t_execution):

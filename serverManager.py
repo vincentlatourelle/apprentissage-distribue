@@ -96,4 +96,3 @@ class ServerManager():
 
     def __del__(self):
         self.pool.close()
-        self.pool.join()

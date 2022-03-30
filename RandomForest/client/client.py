@@ -16,6 +16,11 @@ class Client:
 
         self.current_dataset = None
         self.current_labels = None
+        
+        self.cross_valid_dataset = None
+        self.cross_valid_labels = None
+        self.validation_dataset = None
+        self.validation_labels = None
 
     def __bootstrap(self, x):
         """Effectue un bootstap sur le dataset x
@@ -92,8 +97,13 @@ class Client:
         :type current_tree: Node
         """
         # Separer les donnees en fonctions de l'arbre courant
-        labels = self.labels.copy()
-        dataset = self.dataset.copy()
+        if self.cross_valid_dataset is not None:
+            labels = self.cross_valid_labels.copy()
+            dataset = self.cross_valid_dataset.copy()
+        else:
+            labels = self.labels.copy()
+            dataset = self.dataset.copy()
+            
         if current_tree is not None:
             dataset, labels = current_tree.get_current_node_data(
                 dataset, labels)
@@ -114,8 +124,13 @@ class Client:
         """
 
         # Separer les donnees en fonctions de l'arbre courant
-        labels = self.labels.copy()
-        dataset = self.dataset.copy()
+        if self.cross_valid_dataset is not None:
+            labels = self.cross_valid_labels.copy()
+            dataset = self.cross_valid_dataset.copy()
+        else:
+            labels = self.labels.copy()
+            dataset = self.dataset.copy()
+            
         if current_tree is not None:
             dataset, labels = current_tree.get_current_node_data(
                 dataset, labels)
@@ -144,13 +159,18 @@ class Client:
                 float: justesse (accuracy)
                 int: nombre de donnees dans l'ensemble de test
         """
+        if self.cross_valid_dataset is not None:
+            labels = self.cross_valid_labels.copy()
+            dataset = self.cross_valid_dataset.copy()
+        else:
+            labels = self.test_labels.copy()
+            dataset = self.test_dataset.copy()
+        res = self.forest.predict(dataset)
 
-        res = self.forest.predict(self.test_dataset)
+        accuracy = 1 - sum([int(value != labels[x])
+                           for x, value in enumerate(res)]) / len(labels)
 
-        accuracy = 1 - sum([int(value != self.test_labels[x])
-                           for x, value in enumerate(res)]) / len(self.test_labels)
-
-        return accuracy, len(self.test_dataset)
+        return accuracy, len(dataset)
 
     def get_local_accuracy(self):
         """Calcule la precision d'un arbre entraine localement et teste localement
@@ -192,8 +212,13 @@ class Client:
         """
         
         # Calcul du dataset courant, en parcourant l'arbre jusqu'au noeud a developper
-        labels = self.labels.copy()
-        dataset = self.dataset.copy()
+        if self.cross_valid_dataset is not None:
+            labels = self.cross_valid_labels.copy()
+            dataset = self.cross_valid_dataset.copy()
+        else:
+            labels = self.labels.copy()
+            dataset = self.dataset.copy()
+    
         if current_tree is not None:
             dataset, labels = current_tree.get_current_node_data(
                 dataset, labels)
@@ -255,6 +280,31 @@ class Client:
 
         self.dataset = dataset.loc[train_idx].copy()
         self.labels = labels.loc[train_idx].values.T[0]
+        
+    def set_validation(self):
+        dataset = self.dataset.reset_index(drop=True)
+        labels = pd.DataFrame(self.labels).reset_index(drop=True)
+        
+        
+        train_idx = np.random.choice(
+        len(dataset) - 1, replace=False, size=int(len(dataset) * 0.8))
+
+        # Definit l'ensemble de test et les cibles des 20% restants
+        # (les donnees qui ne font pas partie de l'ensemble d'entrainement)
+        self.validation_dataset = dataset.loc[~dataset.index.isin(train_idx)]
+        self.cross_valid_labels = labels.loc[~labels.index.isin(train_idx)].values.T[0]
+
+        self.cross_valid_dataset = dataset.loc[train_idx]
+        self.cross_valid_labels = labels.loc[train_idx].values.T[0]
+        return 
+    
+    def unset_validation(self):
+        self.validation_dataset = None
+        self.cross_valid_labels = None
+
+        self.cross_valid_dataset = None
+        self.cross_valid_labels = None
+        return
 
     @staticmethod
     def gini_impurity(labels):

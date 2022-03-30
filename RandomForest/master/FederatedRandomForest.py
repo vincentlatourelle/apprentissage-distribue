@@ -212,4 +212,4 @@ class FederatedRandomForest:
         """Récupère les features des clients
         """
 
-        self.features = self.server_manager.get({}, 'rf/features')[0]
+        self.features = self.server_manager.get(None, 'rf/features')[0]
