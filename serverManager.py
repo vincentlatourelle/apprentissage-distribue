@@ -95,4 +95,6 @@ class ServerManager():
         return models
 
     def __del__(self):
+        self.pool.terminate()
         self.pool.close()
+        self.pool = None
