@@ -1,0 +1,35 @@
+version: '3'
+
+services:
+  client:
+    build:
+      context: ./
+      dockerfile: ./RandomForest/client/Dockerfile
+    ports:
+      - "5001-5201:5000"
+    command: flask run --port 5000 --host 0.0.0.0
+    volumes:
+      - .:/code
+    deploy:
+      replicas: 100
+
+
+  # client1:
+  #   build:
+  #     context: ./
+  #     dockerfile: ./RandomForest/client/Dockerfile
+  #   ports:
+  #     - "5001:5000"
+  #   command: flask run --port 5000 --host 0.0.0.0
+  #   volumes:
+  #     - .:/code
+
+  # client2:
+  #   build:
+  #     context: ./
+  #     dockerfile: ./RandomForest/client/Dockerfile
+  #   ports:
+  #     - "5002:5000"
+  #   command: flask run --port 5000 --host 0.0.0.0
+  #   volumes:
+  #     - .:/code
