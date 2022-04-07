@@ -14,7 +14,7 @@ class Master:
         self.rf = None
         self.local_rf = None
 
-    def k_fold_cross_validation(self, k, type, distribution, **kwargs):
+    def cross_validation(self, k, type, distribution, **kwargs):
         """Fait une validation croisee pour determiner les meilleurs hyperparametres a utiliser
            selon le modele utilise
 
@@ -26,12 +26,21 @@ class Master:
         if type == "rf" and distribution == "federated":
             list_n = kwargs['n']
             list_depth = kwargs['depth']
+            results = {}
             for n in list_n:
                 for depth in list_depth:
+                    mean_accuracy = 0
                     for i in range(k):
                         # Il faut tester et entrainer avec un ensemble de validation
-                        # self.frf.train(n, depth)
-                        pass
+                        self.server_manager.get(None,'rf/set-validation')
+                        self.frf.train(n, depth)
+                        res = self.test("rf","federated")
+                        mean_accuracy += res['accuracy']
+                    results[(n,depth)] = mean_accuracy/k
+                        
+            
+            self.server_manager.get(None,'rf/unset-validation')
+            return max(results,key=results.get)
 
     def train(self, type, distribution, **kwargs):
         """ Entraine un model d'apprentissage 
@@ -44,23 +53,16 @@ class Master:
         if type == "rf" and distribution == "federated":
             n = kwargs['n']
             depth = kwargs['depth']
-            # if isinstance(n, list) or isinstance(depth, list):
-            #     if not isinstance(n, list):
-            #         n = [n]
-            #     if not isinstance(depth, list):
-            #         depth = [depth]
-
-            #     n, depth = self.k_fold_cross_validation(
-            #         k=10, type=type, distribution=distribution, n=n, depth=depth)
-
+            
             self.frf.train(n, depth)
 
         if type == "rf" and distribution == "localised":
             self.local_rf = self.server_manager.get_models(
-                {}, 'rf/local-model')
+                None, 'rf/local-model')
 
         elif type == "rf" and distribution == "centralised":
             self.rf = RandomForestClassifier(
+                random_state=1234,
                 n_estimators=kwargs['n'], max_depth=kwargs['depth'])
             self.rf.fit(kwargs['dataset'].values, kwargs['labels'])
 
@@ -79,7 +81,7 @@ class Master:
 
         if type == "rf" and distribution == "federated":
             self.frf.send_forest()
-            response = self.server_manager.get({}, 'rf/federated-accuracy')
+            response = self.server_manager.get(None, 'rf/federated-accuracy')
             n = [x['n'] for x in response]
             acc = [x['accuracy'] for x in response]
             return {'accuracy': sum([n[x] * acc[x] for x in range(len(n))]) / sum(n),
@@ -98,7 +100,7 @@ class Master:
             for local_model in self.local_rf:
                 self.server_manager.post_model('rf/random-forest', local_model)
 
-                response = self.server_manager.get({}, 'rf/federated-accuracy')
+                response = self.server_manager.get(None, 'rf/federated-accuracy')
                 n = [x['n'] for x in response]
                 acc = [x['accuracy'] for x in response]
 
@@ -114,7 +116,7 @@ class Master:
                     'var': np.mean(var)}
 
         elif type == "rf" and distribution == "localised":
-            response = self.server_manager.get({}, 'rf/local-accuracy')
+            response = self.server_manager.get(None, 'rf/local-accuracy')
             n = [x['n'] for x in response]
             acc = [x['accuracy'] for x in response]
 

@@ -133,5 +133,17 @@ def get_local_model():
     )
 
 
+@app.route('/rf/set-validation')
+def set_validation():
+    c.set_validation()
+    return jsonify({})
+
+
+@app.route('/rf/unset-validation')
+def unset_validation():
+    c.unset_validation()
+    return jsonify({})
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", debug=True)

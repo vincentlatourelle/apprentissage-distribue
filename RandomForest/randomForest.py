@@ -11,7 +11,7 @@ class RandomForest:
         self.forest = []
 
     def add(self, node):
-        """Ajoute un arbra a la randomForest
+        """Ajoute un arbre a la randomForest
 
         Args:
             node (Node): noeud a la racine de l'arbre
