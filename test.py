@@ -6,7 +6,7 @@ from serverManager import ServerManager
 
 def run_test(n_clients, repartition, df, labels, network_creator):
     server_manager = ServerManager(
-        ['http://localhost:50{}'.format(str(x).zfill(2)) for x in range(1, n_clients + 1)])
+        ['http://localhost:5{}'.format(str(x).zfill(3)) for x in range(1, n_clients + 1)])
 
     centralise = []
     federated = []
@@ -53,7 +53,7 @@ def run_test(n_clients, repartition, df, labels, network_creator):
 def main():
 
 
-    file_path = ".\\BCWdata.csv"
+    file_path = "BCWdata.csv"
     n_clients = 2
     labels_column = "diagnosis"
 

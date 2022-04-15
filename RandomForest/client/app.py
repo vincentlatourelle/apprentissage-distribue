@@ -61,7 +61,7 @@ def get_leaf_vote():
 
 @app.route('/rf/random-forest', methods=['POST'])
 def set_new_forest():
-    if request.get_json() is not None:
+    if request.data:
         random_forest = RandomForest()
         random_forest.deserialize(request.get_json()["forest"])
         c.set_new_forest(random_forest)
